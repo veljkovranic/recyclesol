@@ -184,6 +184,9 @@ export default function FAQPage() {
               <Link href="/faq" className="text-sm text-white font-medium">
                 FAQ
               </Link>
+              <Link href="/about" className="text-sm text-cleanup-text-secondary hover:text-white transition-colors">
+                About
+              </Link>
             </nav>
           </div>
         </header>

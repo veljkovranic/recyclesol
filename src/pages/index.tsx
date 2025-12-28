@@ -20,13 +20,13 @@ export default function Home() {
     <>
       <Head>
         <title>PumpCleanup - Reclaim SOL From Empty Token Accounts</title>
-        <meta name="description" content="Reclaim hidden SOL locked in empty token accounts on Solana. Clean your wallet and get your rent back instantly." />
+        <meta name="description" content="Your Solana Wallet is Leaking SOL, We'll Help You Reclaim It." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
         
         {/* Open Graph */}
         <meta property="og:title" content="PumpCleanup - Reclaim SOL From Empty Token Accounts" />
-        <meta property="og:description" content="Reclaim hidden SOL locked in empty token accounts on Solana. Clean your wallet and get your rent back instantly." />
+        <meta property="og:description" content="Your Solana Wallet is Leaking SOL, We'll Help You Reclaim It." />
         <meta property="og:url" content="https://pumpcleanup.com" />
         <meta property="og:type" content="website" />
         
@@ -34,7 +34,7 @@ export default function Home() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@pumpcleanup" />
         <meta name="twitter:title" content="PumpCleanup - Reclaim SOL From Empty Token Accounts" />
-        <meta name="twitter:description" content="Reclaim hidden SOL locked in empty token accounts on Solana." />
+        <meta name="twitter:description" content="Your Solana Wallet is Leaking SOL, We'll Help You Reclaim It." />
       </Head>
 
       <div className="min-h-screen flex flex-col bg-cleanup-dark relative overflow-hidden">

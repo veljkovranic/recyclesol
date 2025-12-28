@@ -45,6 +45,12 @@ export const Footer: React.FC = () => {
             >
               FAQ
             </Link>
+            <Link
+              href="/about"
+              className="hover:text-white transition-colors"
+            >
+              About
+            </Link>
             <a
               href="https://x.com/pumpcleanup"
               target="_blank"

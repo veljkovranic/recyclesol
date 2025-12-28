@@ -2,7 +2,7 @@
   "name": "pumpcleanup",
   "version": "1.0.0",
   "private": true,
-  "description": "Reclaim hidden SOL locked in empty token accounts on Solana",
+  "description": "Your Solana Wallet is Leaking SOL, We'll Help You Reclaim It.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

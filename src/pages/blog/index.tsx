@@ -51,6 +51,9 @@ export default function BlogIndex() {
               <Link href="/faq" className="text-sm text-cleanup-text-secondary hover:text-white transition-colors">
                 FAQ
               </Link>
+              <Link href="/about" className="text-sm text-cleanup-text-secondary hover:text-white transition-colors">
+                About
+              </Link>
             </nav>
           </div>
         </header>

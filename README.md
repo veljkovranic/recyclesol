@@ -1,6 +1,6 @@
 # PumpCleanup
 
-Reclaim hidden SOL locked in empty token accounts on Solana.
+Your Solana Wallet is Leaking SOL, We'll Help You Reclaim It.
 
 ## Overview
 

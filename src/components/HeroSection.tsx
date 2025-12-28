@@ -82,7 +82,7 @@ export const HeroSection: React.FC = () => {
   return (
     <>
       {/* Landing Page Header */}
-      <header className="w-full py-4 px-4 md:px-8 border-b border-cleanup-border/50 backdrop-blur-xl bg-cleanup-dark/90 sticky top-0 z-50">
+      {/* <header className="w-full py-4 px-4 md:px-8 border-b border-cleanup-border/50 backdrop-blur-xl bg-cleanup-dark/90 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-all">
             <img 
@@ -107,10 +107,12 @@ export const HeroSection: React.FC = () => {
             >
               FAQ
             </Link>
-            <WalletMultiButton className="!bg-cleanup-card !border !border-cleanup-border !rounded-xl !py-2 !px-3 lg:!py-2.5 lg:!px-5 !text-white hover:!bg-cleanup-hover hover:!border-cleanup-primary !transition-all !font-medium !text-xs lg:!text-sm" />
+            <WalletMultiButton className="!bg-cleanup-card !border !border-cleanup-border !rounded-xl !py-2 !px-3 lg:!py-2.5 lg:!px-5 !text-white hover:!bg-cleanup-hover hover:!border-cleanup-primary !transition-all !font-medium !text-xs lg:!text-sm">
+              Reclaim Your SOL Now
+            </WalletMultiButton>
           </nav>
         </div>
-      </header>
+      </header> */}
 
       <section className="flex-1 flex flex-col items-center justify-center text-center py-12 md:py-20 px-4 relative">
         {/* Background gradient orbs */}
@@ -124,31 +126,53 @@ export const HeroSection: React.FC = () => {
 
         {/* Main Headline */}
         <h1 className="relative font-display text-4xl md:text-5xl lg:text-6xl font-bold mb-6 max-w-4xl leading-tight">
-          <span className="text-white">Reclaim Hidden </span>
+          <span className="text-white">Your Solana Wallet is Leaking </span>
           <span className="gradient-text">SOL</span>
           <span className="text-white">.</span>
           <br />
-          <span className="text-white">Clean Your </span>
-          <span className="gradient-text">Wallet</span>
+          <span className="text-white">We'll Help You </span>
+          <span className="gradient-text">Reclaim</span>
           <span className="text-white">.</span>
         </h1>
 
         {/* Subtitle */}
         <p className="relative text-lg md:text-xl text-cleanup-text-secondary mb-8 max-w-2xl leading-relaxed">
           Every token account on Solana locks ~<span className="text-cleanup-primary font-semibold">0.002 SOL</span> as rent. 
-          Selling tokens doesn&apos;t return it. We help you close empty accounts and get your SOL back—safely and instantly.
+          Selling tokens doesn&apos;t return it. We help you close empty accounts and get your SOL back instantly - often adding up to a full meal 🍕 or more.
         </p>
 
         {/* CTA Area */}
         {!showScanner ? (
-          <div className="relative flex flex-col sm:flex-row items-center gap-4">
-            <WalletMultiButton className="!bg-gradient-to-r !from-cleanup-primary !to-cleanup-secondary !text-white !font-semibold !py-4 !px-8 !rounded-xl !text-base hover:!opacity-90 !transition-all !shadow-lg !shadow-cleanup-primary/30" />
-            <button
-              onClick={() => setShowScanner(true)}
-              className="py-4 px-8 rounded-xl font-medium text-cleanup-text-secondary hover:text-white border border-cleanup-border hover:border-cleanup-primary transition-all"
-            >
-              Check Any Wallet
-            </button>
+          <div className="relative flex flex-col items-center gap-6">
+            <div className="flex flex-col items-center gap-4">
+              <WalletMultiButton 
+                className="!text-white !font-bold !py-6 !px-16 !rounded-2xl !text-2xl hover:!opacity-90 !transition-all !shadow-2xl hover:!shadow-3xl hover:!scale-105"
+                style={{ background: 'linear-gradient(135deg, #9945FF 0%, #4f8fff 50%, #00d4aa 100%)', boxShadow: '0 20px 40px rgba(153, 69, 255, 0.4)', fontSize: '18px !important',
+                  padding: '20px 46px;' }}
+              >
+                Reclaim Your SOL Now
+              </WalletMultiButton>
+              <button
+                onClick={() => setShowScanner(true)}
+                className="py-3 px-6 rounded-xl font-medium text-cleanup-text-secondary hover:text-white transition-all text-sm border border-cleanup-border/50 hover:border-cleanup-primary/50 bg-white/5 hover:bg-white/10"
+              >
+                Scan Your Wallet Address
+              </button>
+            </div>
+            <p className="text-cleanup-text-muted text-sm mt-2">
+              ✅ Non-custodial & secure. We never access your funds.
+            </p>
+            <p className="text-cleanup-text-muted text-sm">
+              🔓 Fully open source —{' '}
+              <a 
+                href="https://github.com/veljkovranic/pump-cleanup" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-cleanup-primary hover:text-cleanup-secondary underline underline-offset-2 transition-colors"
+              >
+                view the code on GitHub
+              </a>
+            </p>
           </div>
         ) : (
           <div className="relative w-full max-w-xl">
