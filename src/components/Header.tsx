@@ -69,7 +69,7 @@ export const Header: React.FC = () => {
           >
             About
           </Link>
-          <WalletMultiButton className="!bg-cleanup-card !border !border-cleanup-border !rounded-xl !py-2 !px-3 lg:!py-2.5 lg:!px-5 !text-white hover:!bg-cleanup-hover hover:!border-cleanup-primary !transition-all !font-medium !text-xs lg:!text-sm" >Reclaim Your SOL Now</WalletMultiButton>
+          <WalletMultiButton className="!bg-cleanup-card !border !border-cleanup-border !rounded-xl !py-2 !px-3 lg:!py-2.5 lg:!px-5 !text-white hover:!bg-cleanup-hover hover:!border-cleanup-primary !transition-all !font-medium !text-xs lg:!text-sm" />
         </div>
       </div>
     </header>
