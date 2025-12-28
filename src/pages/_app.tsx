@@ -6,7 +6,8 @@
 
 import '@/styles/globals.css';
 import type { AppProps } from 'next/app';
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useCallback } from 'react';
+import { WalletError } from '@solana/wallet-adapter-base';
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
 import {
@@ -123,10 +124,31 @@ export default function App({ Component, pageProps }: AppProps) {
     []
   );
 
+  // Handle wallet errors - auto-reset if wallet not found/installed
+  const onWalletError = useCallback((error: WalletError) => {
+    console.error('[Wallet Error]', error.name, error.message);
+    
+    // If the wallet is not installed or connection failed, reset selection
+    if (
+      error.name === 'WalletNotReadyError' ||
+      error.name === 'WalletNotFoundError' ||
+      error.name === 'WalletConnectionError' ||
+      error.message?.includes('not installed') ||
+      error.message?.includes('not found')
+    ) {
+      console.log('[Wallet] Resetting wallet selection due to error');
+      localStorage.removeItem('walletName');
+      // Small delay before reload to ensure cleanup
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    }
+  }, []);
+
   return (
     <PostHogProvider client={posthog}>
       <ConnectionProvider endpoint={RPC_ENDPOINT}>
-        <WalletProvider wallets={wallets} autoConnect>
+        <WalletProvider wallets={wallets} autoConnect onError={onWalletError}>
           <WalletModalProvider>
             <WalletTracker />
             <Component {...pageProps} />
