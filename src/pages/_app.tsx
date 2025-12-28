@@ -16,12 +16,42 @@ import {
 } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import {
+  // Major wallets
   PhantomWalletAdapter,
   SolflareWalletAdapter,
   CoinbaseWalletAdapter,
-  LedgerWalletAdapter,
-  TorusWalletAdapter,
   TrustWalletAdapter,
+  LedgerWalletAdapter,
+  // Additional wallets (A-Z)
+  AlphaWalletAdapter,
+  AvanaWalletAdapter,
+  BitKeepWalletAdapter,
+  BitpieWalletAdapter,
+  CloverWalletAdapter,
+  Coin98WalletAdapter,
+  CoinhubWalletAdapter,
+  FractalWalletAdapter,
+  HuobiWalletAdapter,
+  HyperPayWalletAdapter,
+  KeystoneWalletAdapter,
+  KrystalWalletAdapter,
+  MathWalletAdapter,
+  NekoWalletAdapter,
+  NightlyWalletAdapter,
+  NufiWalletAdapter,
+  OntoWalletAdapter,
+  ParticleAdapter,
+  SafePalWalletAdapter,
+  SaifuWalletAdapter,
+  SalmonWalletAdapter,
+  SkyWalletAdapter,
+  SolongWalletAdapter,
+  SpotWalletAdapter,
+  TokenaryWalletAdapter,
+  TokenPocketWalletAdapter,
+  TorusWalletAdapter,
+  TrezorWalletAdapter,
+  XDEFIWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
 import { RPC_ENDPOINT } from '@/lib/constants';
 
@@ -50,15 +80,45 @@ export default function App({ Component, pageProps }: AppProps) {
     });
   }, []);
 
-  // Wallets - Axiom and other Wallet Standard wallets are auto-detected
+  // Wallets - Wallet Standard wallets are auto-detected, but we explicitly add popular ones
   const wallets = useMemo(
     () => [
+      // Major wallets
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
       new CoinbaseWalletAdapter(),
-      new LedgerWalletAdapter(),
-      new TorusWalletAdapter(),
       new TrustWalletAdapter(),
+      new LedgerWalletAdapter(),
+      new TrezorWalletAdapter(),
+      // Additional wallets (A-Z)
+      new AlphaWalletAdapter(),
+      new AvanaWalletAdapter(),
+      new BitKeepWalletAdapter(),
+      new BitpieWalletAdapter(),
+      new CloverWalletAdapter(),
+      new Coin98WalletAdapter(),
+      new CoinhubWalletAdapter(),
+      new FractalWalletAdapter(),
+      new HuobiWalletAdapter(),
+      new HyperPayWalletAdapter(),
+      new KeystoneWalletAdapter(),
+      new KrystalWalletAdapter(),
+      new MathWalletAdapter(),
+      new NekoWalletAdapter(),
+      new NightlyWalletAdapter(),
+      new NufiWalletAdapter(),
+      new OntoWalletAdapter(),
+      new ParticleAdapter(),
+      new SafePalWalletAdapter(),
+      new SaifuWalletAdapter(),
+      new SalmonWalletAdapter(),
+      new SkyWalletAdapter(),
+      new SolongWalletAdapter(),
+      new SpotWalletAdapter(),
+      new TokenaryWalletAdapter(),
+      new TokenPocketWalletAdapter(),
+      new TorusWalletAdapter(),
+      new XDEFIWalletAdapter(),
     ],
     []
   );
