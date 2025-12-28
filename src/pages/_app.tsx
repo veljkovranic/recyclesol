@@ -19,6 +19,7 @@ import {
   CoinbaseWalletAdapter,
   LedgerWalletAdapter,
   TorusWalletAdapter,
+  TrustWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
 import { RPC_ENDPOINT } from '@/lib/constants';
 
@@ -36,6 +37,7 @@ declare global {
  * Main App component with all providers.
  */
 export default function App({ Component, pageProps }: AppProps) {
+  // Wallets - Axiom and other Wallet Standard wallets are auto-detected
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
@@ -43,6 +45,7 @@ export default function App({ Component, pageProps }: AppProps) {
       new CoinbaseWalletAdapter(),
       new LedgerWalletAdapter(),
       new TorusWalletAdapter(),
+      new TrustWalletAdapter(),
     ],
     []
   );
@@ -71,7 +74,7 @@ function WalletTracker() {
     const connectedAddress = publicKey.toBase58();
     console.log('[WalletTracker] Monitoring wallet:', connectedAddress);
 
-    const provider = (window as any).solflare || (window as any).solana || (window as any).phantom?.solana;
+    const provider = (window as any).axiom || (window as any).solflare || (window as any).solana || (window as any).phantom?.solana;
     
     if (!provider) {
       console.log('[WalletTracker] No wallet provider found');
