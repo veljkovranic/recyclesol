@@ -7,6 +7,8 @@
 import '@/styles/globals.css';
 import type { AppProps } from 'next/app';
 import { useMemo, useEffect } from 'react';
+import posthog from 'posthog-js';
+import { PostHogProvider } from 'posthog-js/react';
 import {
   ConnectionProvider,
   WalletProvider,
@@ -37,6 +39,17 @@ declare global {
  * Main App component with all providers.
  */
 export default function App({ Component, pageProps }: AppProps) {
+  // Initialize PostHog
+  useEffect(() => {
+    posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY || '', {
+      api_host: '/ingest',
+      ui_host: 'https://us.posthog.com',
+      defaults: '2025-05-24',
+      capture_exceptions: true, // This enables capturing exceptions using Error Tracking
+      debug: process.env.NODE_ENV === 'development',
+    });
+  }, []);
+
   // Wallets - Axiom and other Wallet Standard wallets are auto-detected
   const wallets = useMemo(
     () => [
@@ -51,14 +64,16 @@ export default function App({ Component, pageProps }: AppProps) {
   );
 
   return (
-    <ConnectionProvider endpoint={RPC_ENDPOINT}>
-      <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
-          <WalletTracker />
-          <Component {...pageProps} />
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
+    <PostHogProvider client={posthog}>
+      <ConnectionProvider endpoint={RPC_ENDPOINT}>
+        <WalletProvider wallets={wallets} autoConnect>
+          <WalletModalProvider>
+            <WalletTracker />
+            <Component {...pageProps} />
+          </WalletModalProvider>
+        </WalletProvider>
+      </ConnectionProvider>
+    </PostHogProvider>
   );
 }
 

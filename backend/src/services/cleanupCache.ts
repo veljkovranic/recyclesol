@@ -3,7 +3,13 @@
  * 
  * Fetches and caches recent cleanup transactions from the Solana blockchain.
  * Runs on a timer to keep data fresh without overloading the RPC.
+ * 
+ * IMPORTANT: totalSolReclaimed is a cumulative counter that NEVER decreases.
+ * We track seen signatures to avoid double-counting.
  */
+
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface PayoutEntry {
   wallet: string;
@@ -19,10 +25,53 @@ export interface CacheData {
   lastUpdated: number;
 }
 
+// Persistent state file path
+const STATE_FILE = path.join(__dirname, '../../.cleanup-state.json');
+
+interface PersistentState {
+  totalSolReclaimed: number;
+  seenSignatures: string[];
+}
+
+// Load persistent state from disk
+function loadPersistentState(): PersistentState {
+  try {
+    if (fs.existsSync(STATE_FILE)) {
+      const data = fs.readFileSync(STATE_FILE, 'utf-8');
+      const state = JSON.parse(data);
+      console.log(`[PumpCleanup API] Loaded persistent state: ${state.totalSolReclaimed?.toFixed(4)} SOL, ${state.seenSignatures?.length || 0} signatures`);
+      return {
+        totalSolReclaimed: state.totalSolReclaimed || 0,
+        seenSignatures: state.seenSignatures || [],
+      };
+    }
+  } catch (e) {
+    console.error('[PumpCleanup API] Failed to load persistent state:', e);
+  }
+  return { totalSolReclaimed: 0, seenSignatures: [] };
+}
+
+// Save persistent state to disk
+function savePersistentState(state: PersistentState): void {
+  try {
+    // Keep only the last 1000 signatures to prevent unbounded growth
+    const trimmedState = {
+      ...state,
+      seenSignatures: state.seenSignatures.slice(-1000),
+    };
+    fs.writeFileSync(STATE_FILE, JSON.stringify(trimmedState, null, 2));
+  } catch (e) {
+    console.error('[PumpCleanup API] Failed to save persistent state:', e);
+  }
+}
+
+// Load initial state
+let persistentState = loadPersistentState();
+
 // Global cache
 let cache: CacheData = {
   payouts: [],
-  totalSolReclaimed: 0,
+  totalSolReclaimed: persistentState.totalSolReclaimed,
   lastUpdated: 0,
 };
 
@@ -164,21 +213,42 @@ let fetchPromise: Promise<void> | null = null;
 
 /**
  * Refresh the cache (returns existing promise if already fetching)
+ * 
+ * IMPORTANT: Only adds NEW transactions to the running total.
+ * The total NEVER decreases.
  */
 async function doRefresh(): Promise<void> {
   console.log('[PumpCleanup API] Refreshing cache...');
   
   try {
     const payouts = await fetchRecentCleanups();
-    const totalSolReclaimed = payouts.reduce((sum, p) => sum + p.reward, 0);
+    
+    // Find new transactions we haven't seen before
+    let newSolAdded = 0;
+    const newSignatures: string[] = [];
+    
+    for (const payout of payouts) {
+      if (!persistentState.seenSignatures.includes(payout.signature)) {
+        newSolAdded += payout.reward;
+        newSignatures.push(payout.signature);
+      }
+    }
+    
+    // Update persistent state with new transactions
+    if (newSignatures.length > 0) {
+      persistentState.totalSolReclaimed += newSolAdded;
+      persistentState.seenSignatures.push(...newSignatures);
+      savePersistentState(persistentState);
+      console.log(`[PumpCleanup API] Added ${newSignatures.length} new transactions (+${newSolAdded.toFixed(4)} SOL)`);
+    }
 
     cache = {
       payouts,
-      totalSolReclaimed,
+      totalSolReclaimed: persistentState.totalSolReclaimed, // Always use cumulative total
       lastUpdated: Date.now(),
     };
 
-    console.log(`[PumpCleanup API] Cache updated. Total SOL reclaimed: ${totalSolReclaimed.toFixed(4)}`);
+    console.log(`[PumpCleanup API] Cache updated. Total SOL reclaimed: ${persistentState.totalSolReclaimed.toFixed(4)}`);
   } catch (error) {
     console.error('[PumpCleanup API] Failed to refresh cache:', error);
     throw error;
