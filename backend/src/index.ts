@@ -11,6 +11,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { recentCleanupsRouter } from './routes/recentCleanups';
+import { sponsorGasRouter } from './routes/sponsorGas';
 
 dotenv.config();
 
@@ -21,9 +22,9 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
 // Middleware
 app.use(cors({
   origin: CORS_ORIGIN,
-  methods: ['GET'],
+  methods: ['GET', 'POST'],
 }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' })); // Increase limit for transaction payloads
 
 // Health check
 app.get('/health', (req, res) => {
@@ -32,6 +33,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api', recentCleanupsRouter);
+app.use('/api/sponsor', sponsorGasRouter);
 
 // Start server
 app.listen(PORT, () => {
