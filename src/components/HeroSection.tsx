@@ -199,8 +199,13 @@ export const HeroSection: React.FC = () => {
             {/* Connect Wallet option */}
             <div className="flex items-center justify-center gap-3 mb-4">
               <span className="text-cleanup-text-muted text-sm">or</span>
-              <WalletMultiButton className="!bg-transparent !border !border-cleanup-primary !text-cleanup-primary !font-medium !py-2.5 !px-5 !rounded-xl !text-sm hover:!bg-cleanup-primary/10 !transition-all" />
-            </div>
+              <WalletMultiButton 
+                className="!text-white !font-bold !py-6 !px-16 !rounded-2xl !text-2xl hover:!opacity-90 !transition-all !shadow-2xl hover:!shadow-3xl hover:!scale-105"
+                style={{ background: 'linear-gradient(135deg, #9945FF 0%, #4f8fff 50%, #00d4aa 100%)', boxShadow: '0 20px 40px rgba(153, 69, 255, 0.4)', fontSize: '18px !important',
+                  padding: '20px 46px;' }}
+              >
+                Reclaim Your SOL Now
+              </WalletMultiButton>            </div>
 
             {error && (
               <p className="text-cleanup-error text-sm mb-3">{error}</p>
