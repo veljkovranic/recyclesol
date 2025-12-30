@@ -34,7 +34,7 @@ The backend can sponsor gas fees for users who have recoverable accounts but ins
 ### Limits (configurable in `services/sponsorWallet.ts`)
 - Max per transaction: 0.00001 SOL (just gas)
 - Max daily: 0.1 SOL
-- Min recoverable: 0.01 SOL (only sponsor if user can recover at least this much)
+- Min recoverable: 0 SOL (sponsors for any recoverable amount)
 
 ## Development
 

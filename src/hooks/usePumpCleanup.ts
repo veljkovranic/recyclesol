@@ -4,20 +4,21 @@
  * Handles the reclaim operation - closing token accounts and reclaiming rent.
  * This hook manages:
  * - Transaction building and batching
- * - Wallet signing flow
+ * - Wallet signing flow (with optional gas sponsorship)
  * - Progress tracking and status updates
  * - Fee calculation and transfer
  * - Session statistics
  * 
  * The reclaim process:
- * 1. Build transactions to close accounts (batched for efficiency)
- * 2. Add fee transfer transaction (if fee recipient is configured)
- * 3. Request wallet signature for each transaction
- * 4. Submit transactions to the network
- * 5. Track and report results
+ * 1. Check if user needs gas sponsorship (low SOL balance)
+ * 2. Build transactions to close accounts (batched for efficiency)
+ * 3. If sponsored: send to backend for sponsor signature, then get user signature
+ * 4. If not sponsored: request wallet signature directly
+ * 5. Submit transactions to the network
+ * 6. Track and report results
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import {
@@ -32,6 +33,12 @@ import {
   SOLANA_NETWORK,
   STATUS_UPDATE_DELAY,
 } from '@/lib/constants';
+import {
+  checkSponsorEligibility,
+  signWithSponsor,
+  getSponsorStatus,
+  SponsorCheckResult,
+} from '@/lib/sponsor';
 
 // ============================================================================
 // TYPES
@@ -88,6 +95,17 @@ export interface SessionStats {
   reclaimCount: number;
 }
 
+export interface SponsorInfo {
+  /** Whether sponsor service is enabled on backend */
+  enabled: boolean;
+  /** Whether current user qualifies for sponsorship */
+  eligible: boolean;
+  /** Reason for eligibility status */
+  reason?: string;
+  /** Sponsor wallet address (if available) */
+  sponsorWallet?: string;
+}
+
 export interface UsePumpCleanupReturn {
   /** Execute the reclaim operation */
   reclaim: (accounts: CloseableAccount[], customDestination?: string) => Promise<ReclaimResult | null>;
@@ -107,6 +125,10 @@ export interface UsePumpCleanupReturn {
   feeEnabled: boolean;
   /** Get explorer URL for a signature */
   getExplorerLink: (signature: string) => string;
+  /** Sponsor availability info */
+  sponsorInfo: SponsorInfo;
+  /** Check sponsor eligibility for given recoverable amount */
+  checkSponsor: (recoverableLamports: number) => Promise<SponsorCheckResult | null>;
 }
 
 // ============================================================================
@@ -131,6 +153,9 @@ const initialStats: SessionStats = {
 // HOOK IMPLEMENTATION
 // ============================================================================
 
+// Minimum SOL needed for transaction fees
+const MIN_SOL_FOR_FEES = 0.00005;
+
 export function usePumpCleanup(): UsePumpCleanupReturn {
   const { publicKey, signAllTransactions, signTransaction } = useWallet();
   const { connection } = useConnection();
@@ -138,6 +163,10 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
   const [progress, setProgress] = useState<ReclaimProgress>(initialProgress);
   const [lastResult, setLastResult] = useState<ReclaimResult | null>(null);
   const [sessionStats, setSessionStats] = useState<SessionStats>(initialStats);
+  const [sponsorInfo, setSponsorInfo] = useState<SponsorInfo>({
+    enabled: false,
+    eligible: false,
+  });
 
   // Parse fee recipient once
   const feeRecipientPubkey = useMemo(() => {
@@ -149,6 +178,55 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
       return undefined;
     }
   }, []);
+
+  // Check if sponsor service is available on mount
+  useEffect(() => {
+    const checkSponsorAvailability = async () => {
+      try {
+        const status = await getSponsorStatus();
+        if (status) {
+          setSponsorInfo(prev => ({
+            ...prev,
+            enabled: status.enabled,
+            sponsorWallet: status.publicKey || undefined,
+          }));
+          console.log('[PumpCleanup] Sponsor service:', status.enabled ? 'available' : 'disabled');
+        }
+      } catch (error) {
+        console.log('[PumpCleanup] Sponsor service unavailable');
+      }
+    };
+    checkSponsorAvailability();
+  }, []);
+
+  /**
+   * Check sponsor eligibility for a specific recoverable amount
+   */
+  const checkSponsor = useCallback(async (recoverableLamports: number): Promise<SponsorCheckResult | null> => {
+    if (!publicKey) return null;
+    
+    try {
+      const result = await checkSponsorEligibility(
+        publicKey.toBase58(),
+        recoverableLamports,
+        5000 // Estimated fee
+      );
+      
+      if (result) {
+        setSponsorInfo(prev => ({
+          ...prev,
+          eligible: result.needsSponsorship && result.canSponsor,
+          reason: result.reason,
+          sponsorWallet: result.sponsorWallet || undefined,
+        }));
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('[PumpCleanup] Sponsor check failed:', error);
+      return null;
+    }
+  }, [publicKey]);
 
   /**
    * Updates progress state with a delay for visual feedback.
@@ -243,6 +321,73 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
         const userLamports = totalLamports - feeLamports;
         const userSol = userLamports / 1e9;
 
+        // Check user's balance to determine if sponsorship is needed
+        let userBalance = 0;
+        try {
+          userBalance = await connection.getBalance(publicKey);
+        } catch (e) {
+          console.warn('[PumpCleanup] Failed to fetch balance, assuming sufficient');
+          userBalance = 1000000; // Assume sufficient if we can't check
+        }
+
+        const needsSponsorship = userBalance < MIN_SOL_FOR_FEES * 1e9;
+        let useSponsor = false;
+
+        if (needsSponsorship && sponsorInfo.enabled) {
+          updateProgress({
+            status: 'preparing',
+            message: 'Checking gas sponsorship...',
+            percentage: 8,
+          });
+
+          const sponsorCheck = await checkSponsorEligibility(
+            publicKey.toBase58(),
+            totalLamports,
+            5000
+          );
+
+          if (sponsorCheck?.needsSponsorship && sponsorCheck?.canSponsor) {
+            useSponsor = true;
+            console.log('[PumpCleanup] Using gas sponsorship from:', sponsorCheck.sponsorWallet);
+          } else if (sponsorCheck?.needsSponsorship && !sponsorCheck?.canSponsor) {
+            // User needs sponsorship but doesn't qualify
+            setLastResult({
+              success: false,
+              accountsClosed: 0,
+              lamportsReclaimed: 0,
+              solReclaimed: 0,
+              solKept: 0,
+              feePaid: 0,
+              signatures: [],
+              error: sponsorCheck.reason || 'Insufficient SOL for transaction fees',
+            });
+            updateProgress({
+              status: 'error',
+              message: sponsorCheck.reason || 'Insufficient SOL for fees',
+              percentage: 0,
+            });
+            return null;
+          }
+        } else if (needsSponsorship && !sponsorInfo.enabled) {
+          // User needs sponsorship but it's not available
+          setLastResult({
+            success: false,
+            accountsClosed: 0,
+            lamportsReclaimed: 0,
+            solReclaimed: 0,
+            solKept: 0,
+            feePaid: 0,
+            signatures: [],
+            error: 'Insufficient SOL for transaction fees',
+          });
+          updateProgress({
+            status: 'error',
+            message: 'Insufficient SOL for fees',
+            percentage: 0,
+          });
+          return null;
+        }
+
         // Build transactions
         const transactions = await createCloseAccountTransactions(
           accounts,
@@ -257,47 +402,118 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
           percentage: 10,
         });
 
-        // STEP 2: Request wallet signature
-        updateProgress({
-          status: 'awaiting_signature',
-          message: `Please sign ${transactions.length} transaction${transactions.length > 1 ? 's' : ''} in your wallet...`,
-          percentage: 15,
-        });
-
         let signedTransactions: Transaction[];
 
-        try {
-          if (signAllTransactions) {
-            // Preferred: Sign all transactions at once
-            signedTransactions = await signAllTransactions(transactions);
-          } else if (signTransaction) {
-            // Fallback: Sign transactions one by one
-            signedTransactions = [];
-            for (const tx of transactions) {
-              const signed = await signTransaction(tx);
-              signedTransactions.push(signed);
+        // SPONSORED FLOW: Get sponsor signature first, then user signature
+        if (useSponsor) {
+          updateProgress({
+            status: 'preparing',
+            message: 'Getting sponsor signature...',
+            percentage: 12,
+          });
+
+          const sponsoredTransactions: Transaction[] = [];
+
+          for (let i = 0; i < transactions.length; i++) {
+            const tx = transactions[i];
+            
+            // Serialize transaction for sponsor signing
+            // Note: Transaction needs to be serializable without signatures
+            const txBase64 = tx.serialize({
+              requireAllSignatures: false,
+              verifySignatures: false,
+            }).toString('base64');
+
+            const sponsorResult = await signWithSponsor(
+              txBase64,
+              publicKey.toBase58(),
+              totalLamports
+            );
+
+            if (!sponsorResult) {
+              throw new Error('Failed to get sponsor signature');
             }
-          } else {
-            throw new Error('No signing method available');
+
+            // Deserialize the sponsor-signed transaction
+            const sponsoredTxBuffer = Buffer.from(sponsorResult.signedTransaction, 'base64');
+            const sponsoredTx = Transaction.from(sponsoredTxBuffer);
+            sponsoredTransactions.push(sponsoredTx);
           }
-        } catch (error: any) {
-          // User rejected or signing failed - just go back to idle quietly
-          console.log('[PumpCleanup] Signing cancelled or failed:', error?.message);
-          
-          // Reset to idle state (no error display)
-          updateProgress(initialProgress);
-          
-          // Return cancelled result (not an error)
-          return {
-            success: false,
-            accountsClosed: 0,
-            lamportsReclaimed: 0,
-            solReclaimed: 0,
-            solKept: 0,
-            feePaid: 0,
-            signatures: [],
-            error: 'cancelled', // Special marker for cancelled
-          };
+
+          // Now get user signature for all sponsor-signed transactions
+          updateProgress({
+            status: 'awaiting_signature',
+            message: `Please sign ${sponsoredTransactions.length} transaction${sponsoredTransactions.length > 1 ? 's' : ''} in your wallet...`,
+            percentage: 15,
+          });
+
+          try {
+            if (signAllTransactions) {
+              signedTransactions = await signAllTransactions(sponsoredTransactions);
+            } else if (signTransaction) {
+              signedTransactions = [];
+              for (const tx of sponsoredTransactions) {
+                const signed = await signTransaction(tx);
+                signedTransactions.push(signed);
+              }
+            } else {
+              throw new Error('No signing method available');
+            }
+          } catch (error: any) {
+            console.log('[PumpCleanup] Signing cancelled or failed:', error?.message);
+            updateProgress(initialProgress);
+            return {
+              success: false,
+              accountsClosed: 0,
+              lamportsReclaimed: 0,
+              solReclaimed: 0,
+              solKept: 0,
+              feePaid: 0,
+              signatures: [],
+              error: 'cancelled',
+            };
+          }
+        } else {
+          // NORMAL FLOW: User pays for gas, sign directly
+          updateProgress({
+            status: 'awaiting_signature',
+            message: `Please sign ${transactions.length} transaction${transactions.length > 1 ? 's' : ''} in your wallet...`,
+            percentage: 15,
+          });
+
+          try {
+            if (signAllTransactions) {
+              // Preferred: Sign all transactions at once
+              signedTransactions = await signAllTransactions(transactions);
+            } else if (signTransaction) {
+              // Fallback: Sign transactions one by one
+              signedTransactions = [];
+              for (const tx of transactions) {
+                const signed = await signTransaction(tx);
+                signedTransactions.push(signed);
+              }
+            } else {
+              throw new Error('No signing method available');
+            }
+          } catch (error: any) {
+            // User rejected or signing failed - just go back to idle quietly
+            console.log('[PumpCleanup] Signing cancelled or failed:', error?.message);
+            
+            // Reset to idle state (no error display)
+            updateProgress(initialProgress);
+            
+            // Return cancelled result (not an error)
+            return {
+              success: false,
+              accountsClosed: 0,
+              lamportsReclaimed: 0,
+              solReclaimed: 0,
+              solKept: 0,
+              feePaid: 0,
+              signatures: [],
+              error: 'cancelled', // Special marker for cancelled
+            };
+          }
         }
 
         // STEP 3: Submit transactions
@@ -488,7 +704,7 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
         return result;
       }
     },
-    [publicKey, signAllTransactions, signTransaction, connection, feeRecipientPubkey, updateProgress]
+    [publicKey, signAllTransactions, signTransaction, connection, feeRecipientPubkey, updateProgress, sponsorInfo.enabled]
   );
 
   /**
@@ -521,6 +737,8 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
     feePercentage: FEE_PERCENTAGE,
     feeEnabled: FEE_ENABLED,
     getExplorerLink,
+    sponsorInfo,
+    checkSponsor,
   };
 }
 

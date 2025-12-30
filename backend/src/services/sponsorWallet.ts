@@ -20,7 +20,7 @@ const RPC_ENDPOINT = process.env.RPC_ENDPOINT || 'https://api.mainnet-beta.solan
 // Spending limits
 const MAX_SPONSOR_PER_TX_LAMPORTS = 10000; // ~0.00001 SOL max per transaction (just gas)
 const MAX_DAILY_SPONSOR_LAMPORTS = 100000000; // 0.1 SOL max per day
-const MIN_RECOVERABLE_SOL = 0.01; // Only sponsor if user can recover at least this much
+const MIN_RECOVERABLE_SOL = 0; // Sponsor for any recoverable amount
 
 // Daily spending tracker
 let dailySpent = 0;

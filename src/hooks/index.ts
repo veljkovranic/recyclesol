@@ -13,6 +13,7 @@ export type {
   ReclaimProgress,
   ReclaimResult,
   SessionStats,
+  SponsorInfo,
   UsePumpCleanupReturn,
 } from './usePumpCleanup';
 
