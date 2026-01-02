@@ -341,14 +341,19 @@ export async function createCloseAccountTransactions(
     transaction.lastValidBlockHeight = lastValidBlockHeight;
     transaction.feePayer = owner;
 
-    // Add compute budget instruction (minimal compute, no priority fee)
-    // closeAccount instructions are very cheap - ~450 CU each
+    // Add compute budget instructions
+    // Set generous compute limit to handle Token-2022 and complex programs
     transaction.add(
       ComputeBudgetProgram.setComputeUnitLimit({
-        units: 20000, // Minimal compute units for close operations
+        units: 200000,
       })
     );
-    // No priority fee - base fee is sufficient for these simple transactions
+    // Add priority fee to ensure fast confirmation
+    transaction.add(
+      ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 50000, // 0.00005 SOL per 1M CU - reasonable priority
+      })
+    );
 
     // Add close instruction for each account in this batch
     for (const account of batch) {
