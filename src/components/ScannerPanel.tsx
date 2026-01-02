@@ -1,7 +1,7 @@
 /**
  * ScannerPanel Component
  * 
- * Main dashboard shown when wallet is connected.
+ * Main dashboard for Recycle Sol when wallet is connected.
  * Closes empty token accounts to reclaim SOL.
  */
 
@@ -119,10 +119,6 @@ export const ScannerPanel: React.FC = () => {
   // Check sponsor eligibility when user has low balance and recoverable accounts
   useEffect(() => {
     const checkSponsorEligibility = async () => {
-      // Only check if:
-      // - Sponsor service is enabled
-      // - User has low balance
-      // - Scan is complete with closeable accounts
       if (!sponsorInfo.enabled || !hasScanned || emptyAccounts.length === 0) {
         setSponsorCheckDone(false);
         setSponsorEligible(null);
@@ -132,11 +128,10 @@ export const ScannerPanel: React.FC = () => {
       const hasLowBalance = solBalance !== null && solBalance < MIN_SOL_FOR_FEES;
       if (!hasLowBalance) {
         setSponsorCheckDone(true);
-        setSponsorEligible(null); // Not needed
+        setSponsorEligible(null);
         return;
       }
 
-      // Calculate total recoverable lamports
       const totalLamports = emptyAccounts.reduce((sum, a) => sum + a.rentLamports, 0);
       
       const result = await checkSponsor(totalLamports);
@@ -209,9 +204,6 @@ export const ScannerPanel: React.FC = () => {
   const feeAmount = feeEnabled ? selectedTotalSol * FEE_PERCENTAGE : 0;
   const userReceives = selectedTotalSol - feeAmount;
 
-  // User can proceed if:
-  // 1. They have enough SOL for fees, OR
-  // 2. Sponsor will cover the fees
   const hasEnoughSol = solBalance === null || solBalance >= MIN_SOL_FOR_FEES || sponsorEligible === true;
 
   const showSuccessScreen = (lastResult?.success || (lastResult?.accountsClosed ?? 0) > 0) && 
@@ -226,32 +218,32 @@ export const ScannerPanel: React.FC = () => {
 
       {/* Success Result */}
       {showSuccessScreen && (
-        <div className={`${isPartialSuccess ? 'bg-cleanup-warning/10 border-cleanup-warning/30' : 'bg-cleanup-secondary/10 border-cleanup-secondary/30'} border rounded-2xl p-8`}>
+        <div className={`${isPartialSuccess ? 'bg-recycle-warning/10 border-recycle-warning' : 'bg-recycle-success/10 border-recycle-success'} border-2 rounded-2xl p-8 shadow-eco`}>
           <div className="flex flex-col items-center justify-center gap-3 mb-6">
-            <div className={`w-16 h-16 rounded-full ${isPartialSuccess ? 'bg-cleanup-warning/20' : 'bg-cleanup-secondary/20'} flex items-center justify-center`}>
-              <span className="text-3xl">{isPartialSuccess ? '⚠️' : '✓'}</span>
+            <div className={`w-16 h-16 rounded-full ${isPartialSuccess ? 'bg-recycle-warning/20' : 'bg-recycle-success/20'} flex items-center justify-center`}>
+              <span className="text-3xl">{isPartialSuccess ? '⚠️' : '♻️'}</span>
             </div>
-            <h3 className={`text-3xl font-bold ${isPartialSuccess ? 'text-cleanup-warning' : 'text-cleanup-secondary'} font-display`}>
-              {isPartialSuccess ? 'Partial Success!' : 'SOL Recovered!'} 
+            <h3 className={`text-3xl font-bold ${isPartialSuccess ? 'text-recycle-warning' : 'text-recycle-success'} font-display`}>
+              {isPartialSuccess ? 'Partial Success!' : 'SOL Recycled!'} 
             </h3>
-            <p className={`text-4xl font-bold ${isPartialSuccess ? 'text-cleanup-warning' : 'text-cleanup-secondary'} font-display`}>
+            <p className={`text-4xl font-bold ${isPartialSuccess ? 'text-recycle-warning' : 'text-recycle-success'} font-display`}>
               {(lastResult?.solKept ?? 0).toFixed(4)} SOL
             </p>
             {isPartialSuccess && lastResult?.error && (
-              <p className="text-sm text-cleanup-warning/80">{lastResult.error}</p>
+              <p className="text-sm text-recycle-warning/80">{lastResult.error}</p>
             )}
             {feeEnabled && !isPartialSuccess && (
-              <p className="text-sm text-cleanup-text-muted">({(lastResult?.feePaid ?? 0).toFixed(4)} SOL service fee)</p>
+              <p className="text-sm text-recycle-text-muted">({(lastResult?.feePaid ?? 0).toFixed(4)} SOL service fee)</p>
             )}
           </div>
 
           {lastResult?.signatures && lastResult.signatures.length > 0 && (
             <div className="mt-6 text-center">
-              <p className="text-sm text-cleanup-text-muted mb-3">View on Explorer:</p>
+              <p className="text-sm text-recycle-text-muted mb-3">View on Explorer:</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {lastResult.signatures.map((sig, i) => (
                   <a key={sig} href={getExplorerLink(sig)} target="_blank" rel="noopener noreferrer"
-                    className="text-sm text-cleanup-primary hover:underline font-mono">
+                    className="text-sm text-recycle-primary hover:underline font-mono">
                     TX {i + 1}: {shortenAddress(sig, 4)}
                   </a>
                 ))}
@@ -260,9 +252,9 @@ export const ScannerPanel: React.FC = () => {
           )}
 
           <a
-            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Just recovered ${(lastResult?.solKept ?? 0).toFixed(4)} SOL with @pumpcleanup 🧹✨\n\nClean wallet, recovered SOL! Try it yourself 👇`)}&url=${encodeURIComponent('https://pumpcleanup.com')}`}
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`♻️ Just recycled ${(lastResult?.solKept ?? 0).toFixed(4)} SOL with @recyclesol!\n\nClean wallet, recovered value. Try it yourself 👇`)}&url=${encodeURIComponent('https://recyclesol.com')}`}
             target="_blank" rel="noopener noreferrer"
-            className="mt-6 w-full py-4 bg-[#1DA1F2] hover:bg-[#1a8cd8] text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+            className="mt-6 w-full py-4 bg-[#1DA1F2] hover:bg-[#1a8cd8] text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-eco"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -271,7 +263,7 @@ export const ScannerPanel: React.FC = () => {
           </a>
 
           <button onClick={() => disconnect()}
-            className="mt-3 w-full py-4 bg-cleanup-card border border-cleanup-border rounded-xl font-medium text-white hover:bg-cleanup-hover transition-colors">
+            className="mt-3 w-full py-4 bg-white border-2 border-recycle-border rounded-xl font-medium text-recycle-text hover:bg-recycle-bg-alt transition-colors">
             Try Another Wallet
           </button>
         </div>
@@ -279,18 +271,18 @@ export const ScannerPanel: React.FC = () => {
 
       {/* Error Result */}
       {lastResult?.error && lastResult.error !== 'cancelled' && progress.status === 'error' && (
-        <div className="bg-cleanup-error/10 border border-cleanup-error/30 rounded-2xl p-6 mb-6">
+        <div className="bg-recycle-error/10 border-2 border-recycle-error rounded-2xl p-6 mb-6">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 rounded-full bg-cleanup-error/20 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-recycle-error/20 flex items-center justify-center">
               <span className="text-xl">✕</span>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-cleanup-error font-display">Transaction Failed</h3>
-              <p className="text-cleanup-text-secondary text-sm">{lastResult.error}</p>
+              <h3 className="text-lg font-bold text-recycle-error font-display">Transaction Failed</h3>
+              <p className="text-recycle-text-secondary text-sm">{lastResult.error}</p>
             </div>
           </div>
           <button onClick={handleNewScan}
-            className="mt-4 w-full py-4 bg-cleanup-card border border-cleanup-border rounded-xl font-medium text-white hover:bg-cleanup-hover transition-colors">
+            className="mt-4 w-full py-4 bg-white border-2 border-recycle-border rounded-xl font-medium text-recycle-text hover:bg-recycle-bg-alt transition-colors">
             Try Again
           </button>
         </div>
@@ -304,23 +296,21 @@ export const ScannerPanel: React.FC = () => {
           {/* Scan Button */}
           {!hasScanned && (
             <button onClick={scan} disabled={isScanning}
-              className="w-full py-5 bg-gradient-to-r from-cleanup-primary to-cleanup-secondary text-white font-bold rounded-xl text-lg font-display hover:opacity-90 transition-all shadow-lg shadow-cleanup-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
+              className="w-full py-5 bg-recycle-primary text-white font-bold rounded-xl text-lg font-display hover:bg-recycle-primary-dark transition-all shadow-eco-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
               {isScanning ? (
-                <><span className="animate-spin">⏳</span>Scanning Your Wallet...</>
+                <><span className="animate-spin">♻️</span>Scanning Your Wallet...</>
               ) : (
                 <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  Scan for Recoverable SOL
+                  <span>♻️</span>
+                  Scan for Recyclable SOL
                 </>
               )}
             </button>
           )}
 
           {scanError && (
-            <div className="bg-cleanup-error/10 border border-cleanup-error/30 rounded-xl p-4 mt-4">
-              <p className="text-cleanup-error text-sm">{scanError}</p>
+            <div className="bg-recycle-error/10 border-2 border-recycle-error rounded-xl p-4 mt-4">
+              <p className="text-recycle-error text-sm">{scanError}</p>
             </div>
           )}
 
@@ -329,45 +319,43 @@ export const ScannerPanel: React.FC = () => {
             <div className="space-y-4 sm:space-y-6">
               {/* Stats Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
-                <div className="bg-cleanup-card border border-cleanup-border rounded-xl p-3 sm:p-5 overflow-hidden">
-                  <p className="text-cleanup-text-muted text-[10px] sm:text-xs uppercase tracking-wide mb-1 sm:mb-2">Balance</p>
-                  <p className="text-lg sm:text-2xl font-bold font-display text-white truncate">
+                <div className="bg-white border-2 border-recycle-border rounded-xl p-3 sm:p-5 overflow-hidden shadow-eco">
+                  <p className="text-recycle-text-muted text-[10px] sm:text-xs uppercase tracking-wide mb-1 sm:mb-2">Balance</p>
+                  <p className="text-lg sm:text-2xl font-bold font-display text-recycle-text truncate">
                     {solBalance !== null ? `${solBalance.toFixed(4)}` : '...'}
                   </p>
-                  <p className="text-cleanup-text-muted text-[10px] sm:text-xs">SOL</p>
+                  <p className="text-recycle-text-muted text-[10px] sm:text-xs">SOL</p>
                 </div>
-                <div className="bg-cleanup-card border border-cleanup-border rounded-xl p-3 sm:p-5 overflow-hidden">
-                  <p className="text-cleanup-text-muted text-[10px] sm:text-xs uppercase tracking-wide mb-1 sm:mb-2">Recoverable</p>
-                  <p className="text-lg sm:text-2xl font-bold font-display text-cleanup-secondary truncate">
+                <div className="bg-white border-2 border-recycle-primary rounded-xl p-3 sm:p-5 overflow-hidden shadow-eco">
+                  <p className="text-recycle-text-muted text-[10px] sm:text-xs uppercase tracking-wide mb-1 sm:mb-2">Recyclable</p>
+                  <p className="text-lg sm:text-2xl font-bold font-display text-recycle-primary truncate">
                     {(emptyTotalSol * (1 - FEE_PERCENTAGE)).toFixed(4)}
                   </p>
-                  <p className="text-cleanup-text-muted text-[10px] sm:text-xs">SOL</p>
+                  <p className="text-recycle-text-muted text-[10px] sm:text-xs">SOL</p>
                 </div>
-                {/* Hide accounts count on mobile */}
-                <div className="hidden sm:block bg-cleanup-card border border-cleanup-border rounded-xl p-3 sm:p-5">
-                  <p className="text-cleanup-text-muted text-[10px] sm:text-xs uppercase tracking-wide mb-1 sm:mb-2">Accounts</p>
-                  <p className="text-lg sm:text-2xl font-bold font-display text-white">
+                <div className="hidden sm:block bg-white border-2 border-recycle-border rounded-xl p-3 sm:p-5 shadow-eco">
+                  <p className="text-recycle-text-muted text-[10px] sm:text-xs uppercase tracking-wide mb-1 sm:mb-2">Accounts</p>
+                  <p className="text-lg sm:text-2xl font-bold font-display text-recycle-text">
                     {emptyAccounts.length}
                   </p>
-                  <p className="text-cleanup-text-muted text-[10px] sm:text-xs">to close</p>
+                  <p className="text-recycle-text-muted text-[10px] sm:text-xs">to recycle</p>
                 </div>
               </div>
 
               {/* Main Content Card */}
-              <div className="bg-cleanup-card border border-cleanup-border rounded-2xl overflow-hidden">
+              <div className="bg-white border-2 border-recycle-border rounded-2xl overflow-hidden shadow-eco">
                 {emptyAccounts.length > 0 ? (
                   <>
                     {/* Low SOL Status Messages */}
                     {solBalance !== null && solBalance < MIN_SOL_FOR_FEES && (
                       <>
-                        {/* Checking sponsor eligibility */}
                         {!sponsorCheckDone && sponsorInfo.enabled && (
-                          <div className="mx-5 mt-5 bg-cleanup-primary/10 border border-cleanup-primary/30 rounded-xl p-4">
+                          <div className="mx-5 mt-5 bg-recycle-secondary/10 border-2 border-recycle-secondary rounded-xl p-4">
                             <div className="flex items-center gap-3">
-                              <span className="text-xl animate-spin">⏳</span>
+                              <span className="text-xl animate-spin">♻️</span>
                               <div>
-                                <h4 className="text-cleanup-primary font-semibold text-sm">Checking Fee Sponsorship...</h4>
-                                <p className="text-xs text-cleanup-text-secondary">
+                                <h4 className="text-recycle-secondary font-semibold text-sm">Checking Fee Sponsorship...</h4>
+                                <p className="text-xs text-recycle-text-secondary">
                                   You have low SOL balance. Checking if we can cover your fees.
                                 </p>
                               </div>
@@ -375,29 +363,27 @@ export const ScannerPanel: React.FC = () => {
                           </div>
                         )}
 
-                        {/* Sponsor will cover fees */}
                         {sponsorCheckDone && sponsorEligible === true && (
-                          <div className="mx-5 mt-5 bg-cleanup-secondary/10 border border-cleanup-secondary/30 rounded-xl p-4">
+                          <div className="mx-5 mt-5 bg-recycle-success/10 border-2 border-recycle-success rounded-xl p-4">
                             <div className="flex items-center gap-3">
-                              <span className="text-xl">✨</span>
+                              <span className="text-xl">🌱</span>
                               <div>
-                                <h4 className="text-cleanup-secondary font-semibold text-sm">Gas Fees Sponsored!</h4>
-                                <p className="text-xs text-cleanup-text-secondary">
-                                  We'll cover the transaction fees for you. Reclaim your SOL for free!
+                                <h4 className="text-recycle-success font-semibold text-sm">Gas Fees Sponsored!</h4>
+                                <p className="text-xs text-recycle-text-secondary">
+                                  We&apos;ll cover the transaction fees for you. Recycle your SOL for free!
                                 </p>
                               </div>
                             </div>
                           </div>
                         )}
 
-                        {/* Insufficient SOL and no sponsorship available */}
                         {(sponsorCheckDone && sponsorEligible === false) || (!sponsorInfo.enabled) ? (
-                          <div className="mx-5 mt-5 bg-cleanup-warning/10 border border-cleanup-warning/30 rounded-xl p-4">
+                          <div className="mx-5 mt-5 bg-recycle-warning/10 border-2 border-recycle-warning rounded-xl p-4">
                             <div className="flex items-center gap-3">
                               <span className="text-xl">⚠️</span>
                               <div>
-                                <h4 className="text-cleanup-warning font-semibold text-sm">Insufficient SOL for Fees</h4>
-                                <p className="text-xs text-cleanup-text-secondary">
+                                <h4 className="text-recycle-warning font-semibold text-sm">Insufficient SOL for Fees</h4>
+                                <p className="text-xs text-recycle-text-secondary">
                                   You have {solBalance.toFixed(4)} SOL. You need at least ~0.00005 SOL for transaction fees.
                                 </p>
                               </div>
@@ -417,7 +403,7 @@ export const ScannerPanel: React.FC = () => {
                     />
 
                     {/* Action Button */}
-                    <div className="p-5 border-t border-cleanup-border">
+                    <div className="p-5 border-t-2 border-recycle-border">
                       <ReclaimButton
                         onClick={handleReclaim}
                         disabled={isReclaiming || selectedAccounts.size === 0 || !hasEnoughSol}
@@ -428,12 +414,12 @@ export const ScannerPanel: React.FC = () => {
                   </>
                 ) : (
                   <div className="p-12 text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-cleanup-border/50 flex items-center justify-center">
-                      <span className="text-2xl">✓</span>
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-recycle-success/10 flex items-center justify-center">
+                      <span className="text-2xl">✨</span>
                     </div>
-                    <h4 className="text-lg font-semibold text-white mb-2 font-display">Wallet is Clean</h4>
-                    <p className="text-cleanup-text-muted text-sm">
-                      No empty token accounts found. Your wallet is already optimized!
+                    <h4 className="text-lg font-semibold text-recycle-text mb-2 font-display">Wallet is Clean!</h4>
+                    <p className="text-recycle-text-muted text-sm">
+                      No recyclable accounts found. Your wallet is already optimized!
                     </p>
                   </div>
                 )}
@@ -441,8 +427,8 @@ export const ScannerPanel: React.FC = () => {
 
               {/* Frozen accounts notice */}
               {frozenCount > 0 && (
-                <p className="text-cleanup-primary text-xs text-center">
-                  ❄️ {frozenCount} frozen accounts excluded (cannot be closed)
+                <p className="text-recycle-secondary text-xs text-center">
+                  ❄️ {frozenCount} frozen accounts excluded (cannot be recycled)
                 </p>
               )}
             </div>

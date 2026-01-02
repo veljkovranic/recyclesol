@@ -1,7 +1,7 @@
 /**
  * ProgressIndicator Component
  * 
- * Shows the current progress of the reclaim operation.
+ * Shows the current progress of the recycle operation.
  */
 
 import React from 'react';
@@ -42,19 +42,19 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({ progress }
         );
       case 'success':
         return (
-          <svg className="w-6 h-6 text-cleanup-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-recycle-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         );
       case 'partial_success':
         return (
-          <svg className="w-6 h-6 text-cleanup-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-recycle-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         );
       case 'error':
         return (
-          <svg className="w-6 h-6 text-cleanup-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-recycle-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         );
@@ -70,36 +70,36 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({ progress }
   const getStatusColor = () => {
     switch (progress.status) {
       case 'success':
-        return 'bg-cleanup-secondary';
+        return 'bg-recycle-success';
       case 'partial_success':
-        return 'bg-cleanup-warning';
+        return 'bg-recycle-warning';
       case 'error':
-        return 'bg-cleanup-error';
+        return 'bg-recycle-error';
       default:
-        return 'bg-gradient-to-r from-cleanup-primary to-cleanup-secondary';
+        return 'bg-recycle-primary';
     }
   };
 
   return (
-    <div className="bg-cleanup-card border border-cleanup-border rounded-2xl p-6 mb-6">
+    <div className="bg-white border-2 border-recycle-border rounded-2xl p-6 mb-6 shadow-eco">
       {/* Status Header */}
       <div className="flex items-center gap-4 mb-5">
-        <div className="w-12 h-12 rounded-xl bg-cleanup-primary/10 flex items-center justify-center text-cleanup-primary">
+        <div className="w-12 h-12 rounded-xl bg-recycle-primary/10 flex items-center justify-center text-recycle-primary">
           {getStatusIcon()}
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-bold text-white font-display">
-            {progress.status === 'awaiting_signature' ? 'Waiting for Signature' : 'Processing'}
+          <h3 className="text-lg font-bold text-recycle-text font-display">
+            {progress.status === 'awaiting_signature' ? 'Waiting for Signature' : 'Recycling'}
           </h3>
-          <p className="text-sm text-cleanup-text-secondary">{progress.message}</p>
+          <p className="text-sm text-recycle-text-secondary">{progress.message}</p>
         </div>
-        <span className="text-2xl font-bold text-cleanup-primary font-display">
+        <span className="text-2xl font-bold text-recycle-primary font-display">
           {progress.percentage}%
         </span>
       </div>
 
       {/* Progress Bar */}
-      <div className="h-2 bg-cleanup-dark rounded-full overflow-hidden">
+      <div className="h-2 bg-recycle-bg rounded-full overflow-hidden">
         <div
           className={`h-full transition-all duration-500 ease-out ${getStatusColor()}`}
           style={{ width: `${progress.percentage}%` }}
@@ -108,20 +108,20 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({ progress }
 
       {/* Transaction Counter */}
       {progress.totalTx > 0 && (
-        <div className="mt-4 flex justify-between text-xs text-cleanup-text-muted">
+        <div className="mt-4 flex justify-between text-xs text-recycle-text-muted">
           <span>
             Transaction {progress.currentTx} of {progress.totalTx}
           </span>
-          <span className="text-cleanup-secondary animate-pulse">
-            Processing...
+          <span className="text-recycle-primary animate-pulse">
+            ♻️ Recycling...
           </span>
         </div>
       )}
 
       {/* Wallet signature reminder */}
       {progress.status === 'awaiting_signature' && (
-        <div className="mt-4 bg-cleanup-warning/10 border border-cleanup-warning/30 rounded-xl p-4">
-          <p className="text-sm text-cleanup-warning flex items-center gap-2">
+        <div className="mt-4 bg-recycle-warning/10 border-2 border-recycle-warning/30 rounded-xl p-4">
+          <p className="text-sm text-recycle-warning flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>

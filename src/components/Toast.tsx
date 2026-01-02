@@ -37,22 +37,22 @@ export const Toast: React.FC<ToastProps> = ({
   if (!show && !visible) return null;
 
   const bgColor = {
-    info: 'bg-cleanup-card border-cleanup-border',
-    error: 'bg-cleanup-error/10 border-cleanup-error/30',
-    success: 'bg-cleanup-secondary/10 border-cleanup-secondary/30',
+    info: 'bg-white border-recycle-border',
+    error: 'bg-recycle-error/10 border-recycle-error',
+    success: 'bg-recycle-success/10 border-recycle-success',
   }[type];
 
   const textColor = {
-    info: 'text-white',
-    error: 'text-cleanup-error',
-    success: 'text-cleanup-secondary',
+    info: 'text-recycle-text',
+    error: 'text-recycle-error',
+    success: 'text-recycle-success',
   }[type];
 
   return (
     <div
       className={`
         fixed bottom-6 left-1/2 -translate-x-1/2 z-50
-        px-5 py-3 rounded-xl border backdrop-blur-xl
+        px-5 py-3 rounded-xl border-2 shadow-eco
         text-sm ${textColor}
         transition-all duration-300
         ${bgColor}

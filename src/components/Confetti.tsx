@@ -2,6 +2,7 @@
  * Confetti Component
  * 
  * Full-screen confetti animation that triggers when shown.
+ * Eco-themed with green colors and leaf emojis.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -20,14 +21,15 @@ interface Particle {
   drift: number;
 }
 
+// Eco-friendly green color palette
 const COLORS = [
-  '#4f8fff', // primary blue
-  '#00d4aa', // secondary teal
-  '#6b9fff', // lighter blue
-  '#00e6b8', // lighter teal
-  '#ffb84d', // gold
-  '#ff6b8a', // pink
-  '#a855f7', // purple
+  '#2d8a4e', // primary green
+  '#3da564', // light green
+  '#0d9488', // teal
+  '#14b8a6', // light teal
+  '#22c55e', // success green
+  '#16a34a', // medium green
+  '#10b981', // emerald
 ];
 
 export const Confetti: React.FC<ConfettiProps> = ({ show, duration = 4000 }) => {
@@ -87,7 +89,7 @@ export const Confetti: React.FC<ConfettiProps> = ({ show, duration = 4000 }) => 
         </div>
       ))}
 
-      {/* Celebration emojis */}
+      {/* Celebration emojis - eco themed */}
       {[...Array(15)].map((_, i) => (
         <div
           key={`emoji-${i}`}
@@ -100,7 +102,7 @@ export const Confetti: React.FC<ConfettiProps> = ({ show, duration = 4000 }) => 
             '--drift': `${(Math.random() - 0.5) * 50}px`,
           } as React.CSSProperties}
         >
-          {['✨', '🎉', '💎', '⭐', '🧹'][Math.floor(Math.random() * 5)]}
+          {['♻️', '🌱', '🌿', '✨', '💚'][Math.floor(Math.random() * 5)]}
         </div>
       ))}
     </div>

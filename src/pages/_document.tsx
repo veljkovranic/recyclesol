@@ -23,20 +23,20 @@ export default function Document() {
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧹</text></svg>" />
         
         {/* Meta tags */}
-        <meta name="description" content="Reclaim hidden SOL locked in empty token accounts on Solana. Clean your wallet and get your rent back instantly." />
+        <meta name="description" content="Reclaim locked SOL locked in empty token accounts on Solana. Clean your wallet and get your rent back instantly." />
         <meta name="theme-color" content="#4f8fff" />
         
         {/* Open Graph */}
-        <meta property="og:title" content="PumpCleanup - Reclaim SOL" />
-        <meta property="og:description" content="Reclaim hidden SOL locked in empty token accounts on Solana. Clean your wallet instantly." />
+        <meta property="og:title" content="Recycle Sol - Reclaim SOL" />
+        <meta property="og:description" content="Reclaim locked SOL from your wallet. Clean your wallet instantly." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://pumpcleanup.com" />
+        <meta property="og:url" content="https://recyclesol.com" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@pumpcleanup" />
         <meta name="twitter:title" content="PumpCleanup - Reclaim SOL" />
-        <meta name="twitter:description" content="Reclaim hidden SOL locked in empty token accounts on Solana." />
+        <meta name="twitter:description" content="Reclaim SOL locked in empty token accounts on Solana." />
         
         {/* Microsoft Clarity */}
         <script

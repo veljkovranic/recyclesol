@@ -1,8 +1,8 @@
 /**
  * HeroSection Component
  * 
- * Professional landing page hero inspired by rpcfast.com
- * Clean design with clear value proposition and CTA.
+ * Eco-friendly landing page hero for Recycle Sol.
+ * Clean design with recycling theme and trust-building elements.
  */
 
 import React, { useState, useCallback } from 'react';
@@ -20,6 +20,16 @@ const WalletMultiButton = dynamic(
 // Rate limiting cache
 const RATE_LIMIT_MS = 5 * 60 * 1000;
 const scanCache = new Map<string, { result: ScanResult; timestamp: number }>();
+
+// Recycling icon component
+const RecycleIcon = ({ className = "w-10 h-10" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="11" fill="#2d8a4e"/>
+    <path d="M12 5.5L14.5 8.5H13V10.5C13 11.5 13.5 12 14.5 12H16.5V13.5H14C12.5 13.5 11 12 11 10.5V8.5H9.5L12 5.5Z" fill="white"/>
+    <path d="M7.5 15.5L7.5 13L9.5 15.5H7.5ZM8.5 16.5H6C5.5 16.5 5 16 5 15.5V12.5H6.5V15H9V17.5L11 17.5L9.5 20L8 17.5L8.5 16.5Z" fill="white" transform="rotate(-120 12 12)"/>
+    <path d="M7.5 15.5L7.5 13L9.5 15.5H7.5ZM8.5 16.5H6C5.5 16.5 5 16 5 15.5V12.5H6.5V15H9V17.5L11 17.5L9.5 20L8 17.5L8.5 16.5Z" fill="white" transform="rotate(120 12 12)"/>
+  </svg>
+);
 
 export const HeroSection: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -81,64 +91,25 @@ export const HeroSection: React.FC = () => {
 
   return (
     <>
-      {/* Landing Page Header */}
-      {/* <header className="w-full py-4 px-4 md:px-8 border-b border-cleanup-border/50 backdrop-blur-xl bg-cleanup-dark/90 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-all">
-            <img 
-              src="/logo.svg" 
-              alt="PumpCleanup" 
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl"
-            />
-            <span className="font-display text-lg sm:text-xl font-bold text-white">
-              PumpCleanup
-            </span>
-          </Link>
-          <nav className="flex items-center gap-4 lg:gap-6">
-            <Link 
-              href="/blog" 
-              className="text-sm text-cleanup-text-secondary hover:text-white transition-colors hidden lg:block"
-            >
-              Blog
-            </Link>
-            <Link 
-              href="/faq" 
-              className="text-sm text-cleanup-text-secondary hover:text-white transition-colors hidden lg:block"
-            >
-              FAQ
-            </Link>
-            <WalletMultiButton className="!bg-cleanup-card !border !border-cleanup-border !rounded-xl !py-2 !px-3 lg:!py-2.5 lg:!px-5 !text-white hover:!bg-cleanup-hover hover:!border-cleanup-primary !transition-all !font-medium !text-xs lg:!text-sm">
-              Reclaim Your SOL Now
-            </WalletMultiButton>
-          </nav>
-        </div>
-      </header> */}
-
       <section className="flex-1 flex flex-col items-center justify-center text-center py-12 md:py-20 px-4 relative">
-        {/* Background gradient orbs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-cleanup-primary/10 rounded-full blur-[120px]" />
-          <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-cleanup-secondary/10 rounded-full blur-[100px]" />
-        </div>
-
-        {/* Badge */}
-       
+        {/* Subtle eco pattern background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none eco-pattern" />
 
         {/* Main Headline */}
-        <h1 className="relative font-display text-4xl md:text-5xl lg:text-6xl font-bold mb-6 max-w-4xl leading-tight">
-          <span className="text-white">Your Solana Wallet is Leaking </span>
-          <span className="gradient-text">SOL</span>
-          <span className="text-white">.</span>
+        <h1 className="relative font-display text-4xl md:text-5xl lg:text-6xl font-bold mb-6 max-w-4xl leading-tight text-recycle-text">
+          <span>Your Wallet Has </span>
+          <span className="text-recycle-primary">Locked SOL</span>
+          <span>.</span>
           <br />
-          <span className="text-white">We'll Help You </span>
-          <span className="gradient-text">Reclaim</span>
-          <span className="text-white">.</span>
+          <span>Let&apos;s </span>
+          <span className="text-recycle-primary">Recycle</span>
+          <span> It.</span>
         </h1>
 
         {/* Subtitle */}
-        <p className="relative text-lg md:text-xl text-cleanup-text-secondary mb-8 max-w-2xl leading-relaxed">
-          Every token account on Solana locks ~<span className="text-cleanup-primary font-semibold">0.002 SOL</span> as rent. 
-          Selling tokens doesn&apos;t return it. We help you close empty accounts and get your SOL back instantly - often adding up to a full meal 🍕 or more.
+        <p className="relative text-lg md:text-xl text-recycle-text-secondary mb-8 max-w-2xl leading-relaxed">
+          Every token account on Solana locks ~<span className="text-recycle-primary font-semibold">0.002 SOL</span> as rent. 
+          When you sell tokens, this SOL stays trapped. We help you close empty accounts and get your SOL back—clean wallet, recovered value.
         </p>
 
         {/* CTA Area */}
@@ -146,33 +117,42 @@ export const HeroSection: React.FC = () => {
           <div className="relative flex flex-col items-center gap-6">
             <div className="flex flex-col items-center gap-4">
               <WalletMultiButton 
-                className="!text-white !font-bold !py-6 !px-16 !rounded-2xl !text-2xl hover:!opacity-90 !transition-all !shadow-2xl hover:!shadow-3xl hover:!scale-105"
-                style={{ background: 'linear-gradient(135deg, #9945FF 0%, #4f8fff 50%, #00d4aa 100%)', boxShadow: '0 20px 40px rgba(153, 69, 255, 0.4)', fontSize: '18px !important',
-                  padding: '20px 46px;' }}
+                className="!bg-recycle-primary !text-white !font-bold !py-5 !px-12 !rounded-2xl !text-lg hover:!bg-recycle-primary-dark !transition-all !shadow-eco-lg hover:!shadow-eco-xl hover:!scale-[1.02]"
               >
-                Reclaim Your SOL Now
+                ♻️ Recycle Your SOL
               </WalletMultiButton>
               <button
                 onClick={() => setShowScanner(true)}
-                className="py-3 px-6 rounded-xl font-medium text-cleanup-text-secondary hover:text-white transition-all text-sm border border-cleanup-border/50 hover:border-cleanup-primary/50 bg-white/5 hover:bg-white/10"
+                className="py-3 px-6 rounded-xl font-medium text-recycle-text-secondary hover:text-recycle-primary transition-all text-sm border-2 border-recycle-border hover:border-recycle-primary bg-white hover:bg-recycle-bg-alt"
               >
-                Scan Your Wallet Address
+                Preview Any Wallet First
               </button>
             </div>
-            <p className="text-cleanup-text-muted text-sm mt-2">
-              ✅ Non-custodial & secure. We never access your funds.
-            </p>
-            <p className="text-cleanup-text-muted text-sm">
-              🔓 Fully open source —{' '}
-              <a 
-                href="https://github.com/veljkovranic/pump-cleanup" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-cleanup-primary hover:text-cleanup-secondary underline underline-offset-2 transition-colors"
-              >
-                view the code on GitHub
-              </a>
-            </p>
+            
+            {/* Trust indicators */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 mt-2 text-sm text-recycle-text-muted">
+              <span className="flex items-center gap-2">
+                <span className="text-recycle-success">✓</span>
+                Non-custodial
+              </span>
+              <span className="hidden sm:inline">•</span>
+              <span className="flex items-center gap-2">
+                <span className="text-recycle-success">✓</span>
+                <a 
+                  href="https://github.com/veljkovranic/pump-cleanup" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:text-recycle-primary underline underline-offset-2 transition-colors"
+                >
+                  Open source
+                </a>
+              </span>
+              <span className="hidden sm:inline">•</span>
+              <span className="flex items-center gap-2">
+                <span className="text-recycle-success">✓</span>
+                10% fee only on recovered SOL
+              </span>
+            </div>
           </div>
         ) : (
           <div className="relative w-full max-w-xl">
@@ -184,13 +164,13 @@ export const HeroSection: React.FC = () => {
                 onChange={(e) => setAddress(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Enter wallet address..."
-                className="flex-1 bg-cleanup-card border border-cleanup-border rounded-xl px-5 py-4 text-white placeholder-cleanup-text-muted focus:outline-none focus:border-cleanup-primary transition-colors"
+                className="flex-1 bg-white border-2 border-recycle-border rounded-xl px-5 py-4 text-recycle-text placeholder-recycle-text-muted focus:outline-none focus:border-recycle-primary transition-colors shadow-eco"
                 disabled={isScanning}
               />
               <button
                 onClick={handleScan}
                 disabled={isScanning || !address.trim()}
-                className="px-6 py-4 bg-gradient-to-r from-cleanup-primary to-cleanup-secondary text-white font-semibold rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-4 bg-recycle-primary text-white font-semibold rounded-xl hover:bg-recycle-primary-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-eco"
               >
                 {isScanning ? '...' : 'Scan'}
               </button>
@@ -198,34 +178,33 @@ export const HeroSection: React.FC = () => {
 
             {/* Connect Wallet option */}
             <div className="flex items-center justify-center gap-3 mb-4">
-              <span className="text-cleanup-text-muted text-sm">or</span>
+              <span className="text-recycle-text-muted text-sm">or</span>
               <WalletMultiButton 
-                className="!text-white !font-bold !py-6 !px-16 !rounded-2xl !text-2xl hover:!opacity-90 !transition-all !shadow-2xl hover:!shadow-3xl hover:!scale-105"
-                style={{ background: 'linear-gradient(135deg, #9945FF 0%, #4f8fff 50%, #00d4aa 100%)', boxShadow: '0 20px 40px rgba(153, 69, 255, 0.4)', fontSize: '18px !important',
-                  padding: '20px 46px;' }}
+                className="!bg-recycle-primary !text-white !font-bold !py-4 !px-8 !rounded-xl !text-base hover:!bg-recycle-primary-dark !transition-all !shadow-eco"
               >
-                Reclaim Your SOL Now
-              </WalletMultiButton>            </div>
+                ♻️ Connect & Recycle
+              </WalletMultiButton>
+            </div>
 
             {error && (
-              <p className="text-cleanup-error text-sm mb-3">{error}</p>
+              <p className="text-recycle-error text-sm mb-3">{error}</p>
             )}
 
             {/* Result inline */}
             {scanResult && !isScanning && (
-              <div className="bg-cleanup-card border border-cleanup-border rounded-xl p-5">
+              <div className="bg-white border-2 border-recycle-border rounded-xl p-5 shadow-eco">
                 {accountCount > 0 ? (
                   <>
-                    <div className="flex items-center justify-between mb-4 pb-4 border-b border-cleanup-border">
-                      <span className="text-cleanup-text-secondary text-sm">Reclaimable SOL:</span>
-                      <span className="text-2xl font-bold text-cleanup-secondary font-display">
+                    <div className="flex items-center justify-between mb-4 pb-4 border-b border-recycle-border">
+                      <span className="text-recycle-text-secondary text-sm">Reclaimable SOL:</span>
+                      <span className="text-2xl font-bold text-recycle-primary font-display">
                         {(totalSol * (1 - FEE_PERCENTAGE)).toFixed(4)} SOL
                       </span>
                     </div>
                     
                     {scanResult.isTruncated && (
-                      <div className="bg-cleanup-warning/10 border border-cleanup-warning/30 rounded-lg p-3 mb-4">
-                        <p className="text-cleanup-warning text-sm text-center">
+                      <div className="bg-recycle-warning/10 border border-recycle-warning/30 rounded-lg p-3 mb-4">
+                        <p className="text-recycle-warning text-sm text-center">
                           Found {scanResult.totalCloseableCount} accounts! Showing first 100.
                           <br />
                           <span className="opacity-80">Estimated total: {(scanResult.estimatedTotalSol * (1 - FEE_PERCENTAGE)).toFixed(4)} SOL</span>
@@ -234,33 +213,33 @@ export const HeroSection: React.FC = () => {
                     )}
 
                     <div className="max-h-48 overflow-y-auto space-y-2">
-                      <p className="text-cleanup-text-muted text-xs mb-2">
-                        {scanResult.isTruncated ? `Showing ${accountCount} of ${scanResult.totalCloseableCount}` : `${accountCount} closeable accounts`}:
+                      <p className="text-recycle-text-muted text-xs mb-2">
+                        {scanResult.isTruncated ? `Showing ${accountCount} of ${scanResult.totalCloseableCount}` : `${accountCount} recyclable accounts`}:
                       </p>
                       {scanResult.closeableAccounts.slice(0, 20).map((account) => (
                         <div 
                           key={account.address.toBase58()} 
-                          className="flex items-center justify-between text-sm py-2 px-3 bg-cleanup-dark/50 rounded-lg"
+                          className="flex items-center justify-between text-sm py-2 px-3 bg-recycle-bg rounded-lg"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-cleanup-text-muted">📭</span>
-                            <span className="text-cleanup-text-secondary font-mono text-xs">{shortenAddress(account.mint, 4)}</span>
+                            <span className="text-recycle-primary">♻️</span>
+                            <span className="text-recycle-text-secondary font-mono text-xs">{shortenAddress(account.mint, 4)}</span>
                           </div>
-                          <span className="text-cleanup-secondary font-semibold">
+                          <span className="text-recycle-primary font-semibold">
                             +{(account.rentSol * (1 - FEE_PERCENTAGE)).toFixed(4)} SOL
                           </span>
                         </div>
                       ))}
                       {accountCount > 20 && (
-                        <p className="text-cleanup-text-muted text-xs text-center pt-2">
+                        <p className="text-recycle-text-muted text-xs text-center pt-2">
                           +{accountCount - 20} more accounts...
                         </p>
                       )}
                     </div>
                   </>
                 ) : (
-                  <p className="text-cleanup-text-muted text-center py-4">
-                    No closeable accounts found in this wallet.
+                  <p className="text-recycle-text-muted text-center py-4">
+                    ✨ This wallet is already clean—no recyclable accounts found.
                   </p>
                 )}
               </div>

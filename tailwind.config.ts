@@ -9,70 +9,66 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // PumpCleanup - Professional theme inspired by rpcfast.com
-        cleanup: {
-          dark: '#0a0b0f',
-          darker: '#050507',
-          card: '#0f1015',
-          border: '#1a1b23',
-          hover: '#22242e',
-          // Primary blue accent
-          primary: '#4f8fff',
-          'primary-dim': '#3a6fcc',
-          'primary-glow': '#4f8fff33',
-          // Secondary teal
-          secondary: '#00d4aa',
-          'secondary-dim': '#00b894',
+        // Recycle Sol - Eco-friendly theme with light greens
+        recycle: {
+          // Backgrounds
+          bg: '#f8fdf9',
+          'bg-alt': '#f0f9f2',
+          card: '#ffffff',
+          'card-hover': '#f5fbf6',
+          border: '#d4e8d9',
+          'border-hover': '#a8d4b4',
+          // Primary - Sage/Forest green
+          primary: '#2d8a4e',
+          'primary-light': '#3da564',
+          'primary-dark': '#1f6b3a',
+          // Secondary - Teal accent
+          secondary: '#0d9488',
+          'secondary-light': '#14b8a6',
           // Status colors
-          success: '#00d4aa',
-          warning: '#ffb84d',
-          error: '#ff4d6a',
+          success: '#22c55e',
+          warning: '#f59e0b',
+          error: '#ef4444',
           // Text colors
-          text: '#ffffff',
-          'text-secondary': '#8b8d97',
-          'text-muted': '#5c5e66',
+          text: '#1a2e23',
+          'text-secondary': '#4a6b56',
+          'text-muted': '#7a9985',
+          // Dark mode variants (for cards/accents)
+          dark: '#1a2e23',
+          'dark-card': '#243d2e',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+        sans: ['DM Sans', 'system-ui', 'sans-serif'],
+        display: ['Lexend', 'DM Sans', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       animation: {
-        'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+        'pulse-soft': 'pulse-soft 2s ease-in-out infinite',
         'spin-slow': 'spin 3s linear infinite',
         'bounce-slow': 'bounce 2s infinite',
         'float': 'float 6s ease-in-out infinite',
-        'gradient-x': 'gradient-x 3s ease infinite',
-        'shimmer': 'shimmer 2s linear infinite',
+        'leaf-fall': 'leaf-fall 4s ease-in-out infinite',
       },
       keyframes: {
-        'pulse-glow': {
-          '0%, 100%': {
-            boxShadow: '0 0 20px rgba(79, 143, 255, 0.3)',
-          },
-          '50%': {
-            boxShadow: '0 0 40px rgba(79, 143, 255, 0.6)',
-          },
+        'pulse-soft': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' },
         },
         'float': {
           '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-20px)' },
+          '50%': { transform: 'translateY(-10px)' },
         },
-        'gradient-x': {
-          '0%, 100%': { backgroundPosition: '0% 50%' },
-          '50%': { backgroundPosition: '100% 50%' },
-        },
-        'shimmer': {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(100%)' },
+        'leaf-fall': {
+          '0%': { transform: 'translateY(-10px) rotate(0deg)', opacity: '0' },
+          '50%': { opacity: '1' },
+          '100%': { transform: 'translateY(10px) rotate(15deg)', opacity: '0' },
         },
       },
-      backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'cleanup-gradient': 'linear-gradient(135deg, #0a0b0f 0%, #0f1218 50%, #0a0b0f 100%)',
-        'hero-gradient': 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(79, 143, 255, 0.15), transparent)',
+      boxShadow: {
+        'eco': '0 4px 20px rgba(45, 138, 78, 0.08)',
+        'eco-lg': '0 8px 40px rgba(45, 138, 78, 0.12)',
+        'eco-xl': '0 20px 60px rgba(45, 138, 78, 0.15)',
       },
     },
   },
