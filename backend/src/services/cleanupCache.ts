@@ -1,11 +1,8 @@
 /**
  * Cleanup Cache Service
  * 
- * Fetches and caches recent cleanup transactions from the Solana blockchain.
- * Runs on a timer to keep data fresh without overloading the RPC.
- * 
- * IMPORTANT: totalSolReclaimed is a cumulative counter that NEVER decreases.
- * We track seen signatures to avoid double-counting.
+ * Stores cleanup records reported by the frontend.
+ * NO RPC calls - all data comes from successful cleanup reports.
  */
 
 import * as fs from 'fs';
@@ -14,7 +11,8 @@ import * as path from 'path';
 export interface PayoutEntry {
   wallet: string;
   accountsClosed: number;
-  reward: number;
+  solReclaimed: number;
+  feePaid: number;
   signature: string;
   timestamp: number; // Unix timestamp in seconds
 }
@@ -22,273 +20,151 @@ export interface PayoutEntry {
 export interface CacheData {
   payouts: PayoutEntry[];
   totalSolReclaimed: number;
+  totalAccountsClosed: number;
+  totalCleanups: number;
   lastUpdated: number;
 }
 
-// Persistent state file path
-const STATE_FILE = path.join(__dirname, '../../.cleanup-state.json');
+// Persistent storage file path
+const STORAGE_FILE = path.join(__dirname, '../../.cleanup-data.json');
 
-interface PersistentState {
+interface StorageData {
+  payouts: PayoutEntry[];
   totalSolReclaimed: number;
-  seenSignatures: string[];
+  totalAccountsClosed: number;
+  seenSignatures: Set<string>;
 }
 
-// Load persistent state from disk
-function loadPersistentState(): PersistentState {
-  try {
-    if (fs.existsSync(STATE_FILE)) {
-      const data = fs.readFileSync(STATE_FILE, 'utf-8');
-      const state = JSON.parse(data);
-      console.log(`[PumpCleanup API] Loaded persistent state: ${state.totalSolReclaimed?.toFixed(4)} SOL, ${state.seenSignatures?.length || 0} signatures`);
-      return {
-        totalSolReclaimed: state.totalSolReclaimed || 0,
-        seenSignatures: state.seenSignatures || [],
-      };
-    }
-  } catch (e) {
-    console.error('[PumpCleanup API] Failed to load persistent state:', e);
-  }
-  return { totalSolReclaimed: 0, seenSignatures: [] };
-}
-
-// Save persistent state to disk
-function savePersistentState(state: PersistentState): void {
-  try {
-    // Keep only the last 1000 signatures to prevent unbounded growth
-    const trimmedState = {
-      ...state,
-      seenSignatures: state.seenSignatures.slice(-1000),
-    };
-    fs.writeFileSync(STATE_FILE, JSON.stringify(trimmedState, null, 2));
-  } catch (e) {
-    console.error('[PumpCleanup API] Failed to save persistent state:', e);
-  }
-}
-
-// Load initial state
-let persistentState = loadPersistentState();
-
-// Global cache
-let cache: CacheData = {
+// In-memory cache
+let storageData: StorageData = {
   payouts: [],
-  totalSolReclaimed: persistentState.totalSolReclaimed,
-  lastUpdated: 0,
+  totalSolReclaimed: 0,
+  totalAccountsClosed: 0,
+  seenSignatures: new Set(),
 };
 
-let isFetching = false;
-
-const RPC_ENDPOINT = process.env.RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com';
-const FEE_WALLET = process.env.FEE_WALLET || '33fRYeecEUKWoeyfmQxgkGHaDgy8sAJgUsmdgikMpNJ4';
-const CACHE_TTL_MS = parseInt(process.env.CACHE_TTL_MS || '120000', 10); // 2 minutes default
+/**
+ * Load storage from disk
+ */
+function loadStorage(): void {
+  try {
+    if (fs.existsSync(STORAGE_FILE)) {
+      const data = fs.readFileSync(STORAGE_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      
+      storageData = {
+        payouts: parsed.payouts || [],
+        totalSolReclaimed: parsed.totalSolReclaimed || 0,
+        totalAccountsClosed: parsed.totalAccountsClosed || 0,
+        seenSignatures: new Set(parsed.seenSignatures || []),
+      };
+      
+      console.log(`[CleanupCache] Loaded ${storageData.payouts.length} cleanups, ${storageData.totalSolReclaimed.toFixed(4)} SOL total`);
+    } else {
+      console.log('[CleanupCache] No existing data file, starting fresh');
+    }
+  } catch (e) {
+    console.error('[CleanupCache] Failed to load storage:', e);
+  }
+}
 
 /**
- * Get the current cached data
+ * Save storage to disk
+ */
+function saveStorage(): void {
+  try {
+    const dataToSave = {
+      payouts: storageData.payouts.slice(-100), // Keep last 100 for display
+      totalSolReclaimed: storageData.totalSolReclaimed,
+      totalAccountsClosed: storageData.totalAccountsClosed,
+      seenSignatures: Array.from(storageData.seenSignatures).slice(-500), // Keep last 500 sigs
+    };
+    
+    fs.writeFileSync(STORAGE_FILE, JSON.stringify(dataToSave, null, 2));
+  } catch (e) {
+    console.error('[CleanupCache] Failed to save storage:', e);
+  }
+}
+
+// Load on startup
+loadStorage();
+
+/**
+ * Report a successful cleanup
+ * Called by the frontend after a successful reclaim
+ */
+export function reportCleanup(entry: {
+  wallet: string;
+  accountsClosed: number;
+  solReclaimed: number;
+  feePaid: number;
+  signature: string;
+}): { success: boolean; duplicate?: boolean } {
+  // Check for duplicate
+  if (storageData.seenSignatures.has(entry.signature)) {
+    console.log(`[CleanupCache] Duplicate signature ignored: ${entry.signature.slice(0, 8)}...`);
+    return { success: true, duplicate: true };
+  }
+  
+  // Add to storage
+  const payout: PayoutEntry = {
+    wallet: entry.wallet,
+    accountsClosed: entry.accountsClosed,
+    solReclaimed: entry.solReclaimed,
+    feePaid: entry.feePaid,
+    signature: entry.signature,
+    timestamp: Math.floor(Date.now() / 1000),
+  };
+  
+  storageData.payouts.unshift(payout); // Add to front (most recent first)
+  storageData.totalSolReclaimed += entry.solReclaimed;
+  storageData.totalAccountsClosed += entry.accountsClosed;
+  storageData.seenSignatures.add(entry.signature);
+  
+  // Keep payouts list manageable
+  if (storageData.payouts.length > 100) {
+    storageData.payouts = storageData.payouts.slice(0, 100);
+  }
+  
+  // Persist to disk
+  saveStorage();
+  
+  console.log(`[CleanupCache] Recorded cleanup: ${entry.wallet.slice(0, 8)}... | ${entry.accountsClosed} accounts | ${entry.solReclaimed.toFixed(4)} SOL`);
+  
+  return { success: true };
+}
+
+/**
+ * Get cached data for API responses
  */
 export function getCachedData(): CacheData {
-  return cache;
+  return {
+    payouts: storageData.payouts,
+    totalSolReclaimed: storageData.totalSolReclaimed,
+    totalAccountsClosed: storageData.totalAccountsClosed,
+    totalCleanups: storageData.seenSignatures.size,
+    lastUpdated: Date.now(),
+  };
 }
 
 /**
- * Check if cache is stale
+ * Get recent payouts (for display)
  */
-export function isCacheStale(): boolean {
-  return Date.now() - cache.lastUpdated > CACHE_TTL_MS;
+export function getRecentPayouts(limit: number = 10): PayoutEntry[] {
+  return storageData.payouts.slice(0, limit);
 }
 
 /**
- * Fetch recent cleanup transactions from the blockchain
+ * Get stats
  */
-async function fetchRecentCleanups(): Promise<PayoutEntry[]> {
-  console.log('[PumpCleanup API] Fetching recent cleanups from RPC...');
-  console.log('[PumpCleanup API] RPC Endpoint:', RPC_ENDPOINT);
-  console.log('[PumpCleanup API] Fee Wallet:', FEE_WALLET);
-
-  try {
-    // Get recent signatures for the fee wallet
-    const sigResponse = await fetch(RPC_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 'sigs',
-        method: 'getSignaturesForAddress',
-        params: [FEE_WALLET, { limit: 20 }],
-      }),
-    });
-
-    const sigData = await sigResponse.json() as { error?: any; result?: any[] };
-    
-    // Debug: log raw response
-    if (sigData.error) {
-      console.error('[PumpCleanup API] RPC Error:', sigData.error);
-      return [];
-    }
-    
-    const signatures = sigData.result || [];
-    console.log(`[PumpCleanup API] Found ${signatures.length} signatures`);
-
-    if (signatures.length === 0) {
-      console.log('[PumpCleanup API] No signatures found for fee wallet');
-      return [];
-    }
-
-    // Batch fetch all transactions
-    const batchRequests = signatures.map((s: any, idx: number) => ({
-      jsonrpc: '2.0',
-      id: `tx-${idx}`,
-      method: 'getTransaction',
-      params: [
-        s.signature,
-        { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0 },
-      ],
-    }));
-
-    const txResponse = await fetch(RPC_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(batchRequests),
-    });
-
-    const txData = await txResponse.json() as any;
-    const transactions = Array.isArray(txData) 
-      ? txData.map((r: any) => r.result) 
-      : [];
-
-    // Parse transactions into payout entries
-    const payouts: PayoutEntry[] = [];
-
-    for (let i = 0; i < transactions.length; i++) {
-      const tx = transactions[i];
-      const sig = signatures[i];
-      
-      if (!tx || !tx.meta || tx.meta.err) continue;
-
-      try {
-        const preBalances = tx.meta.preBalances;
-        const postBalances = tx.meta.postBalances;
-        const accountKeys = tx.transaction.message.accountKeys;
-
-        const accountAddresses: string[] = accountKeys.map((key: any) => {
-          if (key.pubkey) {
-            return typeof key.pubkey === 'string' ? key.pubkey : key.pubkey.toString();
-          }
-          return typeof key === 'string' ? key : key.toString();
-        });
-
-        const feeWalletIndex = accountAddresses.findIndex(addr => addr === FEE_WALLET);
-        if (feeWalletIndex === -1) continue;
-
-        const balanceDiff = postBalances[feeWalletIndex] - preBalances[feeWalletIndex];
-        if (balanceDiff <= 0) continue;
-
-        const sender = accountAddresses[0];
-        const feeReceived = balanceDiff / 1e9;
-        const userReceived = feeReceived * 9; // 10% fee means user got 9x what we received
-        const rentPerAccount = 0.00204;
-        const estimatedAccounts = Math.max(1, Math.round(userReceived / 0.9 / rentPerAccount));
-
-        payouts.push({
-          wallet: sender,
-          accountsClosed: estimatedAccounts,
-          reward: userReceived,
-          signature: sig.signature,
-          timestamp: sig.blockTime || 0,
-        });
-      } catch (e) {
-        // Skip malformed transaction
-      }
-    }
-
-    console.log(`[PumpCleanup API] Fetched ${payouts.length} cleanup transactions`);
-    return payouts;
-
-  } catch (error) {
-    console.error('[PumpCleanup API] Error fetching cleanups:', error);
-    throw error;
-  }
-}
-
-// Promise to deduplicate concurrent requests
-let fetchPromise: Promise<void> | null = null;
-
-/**
- * Refresh the cache (returns existing promise if already fetching)
- * 
- * IMPORTANT: Only adds NEW transactions to the running total.
- * The total NEVER decreases.
- */
-async function doRefresh(): Promise<void> {
-  console.log('[PumpCleanup API] Refreshing cache...');
-  
-  try {
-    const payouts = await fetchRecentCleanups();
-    
-    // Find new transactions we haven't seen before
-    let newSolAdded = 0;
-    const newSignatures: string[] = [];
-    
-    for (const payout of payouts) {
-      if (!persistentState.seenSignatures.includes(payout.signature)) {
-        newSolAdded += payout.reward;
-        newSignatures.push(payout.signature);
-      }
-    }
-    
-    // Update persistent state with new transactions
-    if (newSignatures.length > 0) {
-      persistentState.totalSolReclaimed += newSolAdded;
-      persistentState.seenSignatures.push(...newSignatures);
-      savePersistentState(persistentState);
-      console.log(`[PumpCleanup API] Added ${newSignatures.length} new transactions (+${newSolAdded.toFixed(4)} SOL)`);
-    }
-
-    cache = {
-      payouts,
-      totalSolReclaimed: persistentState.totalSolReclaimed, // Always use cumulative total
-      lastUpdated: Date.now(),
-    };
-
-    console.log(`[PumpCleanup API] Cache updated. Total SOL reclaimed: ${persistentState.totalSolReclaimed.toFixed(4)}`);
-  } catch (error) {
-    console.error('[PumpCleanup API] Failed to refresh cache:', error);
-    throw error;
-  }
-}
-
-/**
- * Get cached data, refreshing if stale (lazy loading)
- * Only fetches when actually requested, not on a timer
- */
-export async function getCachedDataAsync(): Promise<CacheData> {
-  // If cache is fresh, return immediately
-  if (!isCacheStale() && cache.lastUpdated > 0) {
-    return cache;
-  }
-
-  // If already fetching, wait for that to complete
-  if (fetchPromise) {
-    await fetchPromise;
-    return cache;
-  }
-
-  // Start a new fetch
-  fetchPromise = doRefresh().finally(() => {
-    fetchPromise = null;
-  });
-
-  await fetchPromise;
-  return cache;
-}
-
-/**
- * Trigger a cache refresh in the background (non-blocking)
- */
-export function refreshCacheInBackground(): void {
-  if (fetchPromise || !isCacheStale()) {
-    return;
-  }
-
-  fetchPromise = doRefresh().finally(() => {
-    fetchPromise = null;
-  });
+export function getStats(): {
+  totalSolReclaimed: number;
+  totalAccountsClosed: number;
+  totalCleanups: number;
+} {
+  return {
+    totalSolReclaimed: storageData.totalSolReclaimed,
+    totalAccountsClosed: storageData.totalAccountsClosed,
+    totalCleanups: storageData.seenSignatures.size,
+  };
 }

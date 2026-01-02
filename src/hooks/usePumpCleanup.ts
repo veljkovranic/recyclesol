@@ -38,6 +38,7 @@ import {
   signWithSponsor,
   getSponsorStatus,
   SponsorCheckResult,
+  reportCleanup,
 } from '@/lib/sponsor';
 
 // ============================================================================
@@ -663,11 +664,24 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
 
         // Update session stats only for actual success
         if (actualAccountsClosed > 0) {
-        setSessionStats(prev => ({
+          setSessionStats(prev => ({
             totalSolReclaimed: prev.totalSolReclaimed + actualUserSol,
             totalAccountsClosed: prev.totalAccountsClosed + actualAccountsClosed,
-          reclaimCount: prev.reclaimCount + 1,
-        }));
+            reclaimCount: prev.reclaimCount + 1,
+          }));
+          
+          // Report cleanup to backend (for tracking, non-blocking)
+          if (confirmedSignatures.length > 0 && publicKey) {
+            reportCleanup({
+              wallet: publicKey.toBase58(),
+              accountsClosed: actualAccountsClosed,
+              solReclaimed: actualUserSol,
+              feePaid: actualFee,
+              signature: confirmedSignatures[0], // Use first signature as identifier
+            }).catch(err => {
+              console.warn('[PumpCleanup] Failed to report cleanup:', err);
+            });
+          }
         }
 
         updateProgress({

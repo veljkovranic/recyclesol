@@ -1,0 +1,26 @@
+{
+  "payouts": [
+    {
+      "wallet": "DMLsNso4Q4qS4kQ9cXcpzBrkUnk68VnpFBzMJBqJBqYL",
+      "accountsClosed": 2,
+      "solReclaimed": 0.0041,
+      "feePaid": 0.000408,
+      "signature": "2a5Bg5hpBPyh35PTfzb8iRMgQTzvDhbE5rXeLrPbeEh9GUexzbQuDDGFX2dU2p8UXteHnwahxZ3ifzkQZcWCp2zH",
+      "timestamp": 1767133501
+    },
+    {
+      "wallet": "FqkwjPeYiV2Z6uhfAuvPHpqbkER2EzdrDoNuVTxeTh7A",
+      "accountsClosed": 1,
+      "solReclaimed": 0.002,
+      "feePaid": 0.000204,
+      "signature": "5aSfF6yt8HQVnfFYQ6HX2KL22x7H9dhWvUBr3c92Fc7GKSPnUAEMkkLmRbf3bgEATGiTHv4dQwmT7yG6Kk7VvTg9",
+      "timestamp": 1767131840
+    }
+  ],
+  "totalSolReclaimed": 0.0061,
+  "totalAccountsClosed": 3,
+  "seenSignatures": [
+    "2a5Bg5hpBPyh35PTfzb8iRMgQTzvDhbE5rXeLrPbeEh9GUexzbQuDDGFX2dU2p8UXteHnwahxZ3ifzkQZcWCp2zH",
+    "5aSfF6yt8HQVnfFYQ6HX2KL22x7H9dhWvUBr3c92Fc7GKSPnUAEMkkLmRbf3bgEATGiTHv4dQwmT7yG6Kk7VvTg9"
+  ]
+}

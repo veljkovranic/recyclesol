@@ -145,3 +145,40 @@ export async function isSponsorAvailable(): Promise<boolean> {
   }
 }
 
+// ============================================================================
+// CLEANUP REPORTING
+// ============================================================================
+
+/**
+ * Report a successful cleanup to the backend
+ * This is used for tracking recent cleanups without RPC calls
+ */
+export async function reportCleanup(data: {
+  wallet: string;
+  accountsClosed: number;
+  solReclaimed: number;
+  feePaid: number;
+  signature: string;
+}): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/report-cleanup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    
+    const result = await response.json();
+    
+    if (!result.success) {
+      console.warn('[Sponsor] Report cleanup failed:', result.error);
+      return false;
+    }
+    
+    console.log('[Sponsor] Cleanup reported successfully');
+    return true;
+  } catch (error) {
+    console.error('[Sponsor] Failed to report cleanup:', error);
+    return false;
+  }
+}
+
