@@ -39,6 +39,10 @@ declare global {
  * Main App component with all providers.
  */
 export default function App({ Component, pageProps }: AppProps) {
+  const phantomAppId =
+    process.env.NEXT_PUBLIC_PHANTOM_APP_ID ||
+    'f16b0eca-fd20-4839-b192-5459863377d0';
+
   // Initialize PostHog
   useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY || '', {
@@ -53,14 +57,26 @@ export default function App({ Component, pageProps }: AppProps) {
   // Wallets - Wallet Standard wallets are auto-detected
   const wallets = useMemo(
     () => [
-      new PhantomWalletAdapter(),
+      new PhantomWalletAdapter({
+        appIdentity: {
+          name: 'RecycleSol',
+          uri: 'https://recyclesol.com',
+          icon: 'https://recyclesol.com/logo.svg',
+          appId: phantomAppId,
+        } as {
+          name: string;
+          uri?: string;
+          icon?: string;
+          appId?: string;
+        },
+      }),
       new SolflareWalletAdapter(),
       new CoinbaseWalletAdapter(),
       new LedgerWalletAdapter(),
       new TorusWalletAdapter(),
       new TrustWalletAdapter(),
     ],
-    []
+    [phantomAppId]
   );
 
   return (
