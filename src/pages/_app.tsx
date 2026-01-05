@@ -39,10 +39,6 @@ declare global {
  * Main App component with all providers.
  */
 export default function App({ Component, pageProps }: AppProps) {
-  const phantomAppId =
-    process.env.NEXT_PUBLIC_PHANTOM_APP_ID ||
-    '11d76b40-33c7-447c-b576-8b3866b7ea50';
-
   // Initialize PostHog
   useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY || '', {
@@ -57,26 +53,14 @@ export default function App({ Component, pageProps }: AppProps) {
   // Wallets - Wallet Standard wallets are auto-detected
   const wallets = useMemo(
     () => [
-      new PhantomWalletAdapter({
-        appIdentity: {
-          name: 'PumpCleanup',
-          uri: 'https://pumpcleanup.com',
-          icon: 'https://pumpcleanup.com/favicon.ico',
-          appId: phantomAppId,
-        } as {
-          name: string;
-          uri?: string;
-          icon?: string;
-          appId?: string;
-        },
-      }),
+      new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
       new CoinbaseWalletAdapter(),
       new LedgerWalletAdapter(),
       new TorusWalletAdapter(),
       new TrustWalletAdapter(),
     ],
-    [phantomAppId]
+    []
   );
 
   return (
