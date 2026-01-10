@@ -43,7 +43,7 @@ export default function App({ Component, pageProps }: AppProps) {
     process.env.NEXT_PUBLIC_PHANTOM_APP_ID ||
     'f16b0eca-fd20-4839-b192-5459863377d0';
 
-  // Initialize PostHog
+  // Initialize PostHog and capture referral
   useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY || '', {
       api_host: '/ingest',
@@ -52,6 +52,23 @@ export default function App({ Component, pageProps }: AppProps) {
       capture_exceptions: true, // This enables capturing exceptions using Error Tracking
       debug: process.env.NODE_ENV === 'development',
     });
+
+    // Capture referral code from URL and persist it
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get('ref');
+      
+      if (refCode) {
+        // Store in localStorage so it persists across sessions
+        localStorage.setItem('referral_code', refCode);
+      }
+      
+      // Set as PostHog person property (uses stored value if no new ref in URL)
+      const storedRef = localStorage.getItem('referral_code');
+      if (storedRef) {
+        posthog.setPersonProperties({ referral_code: storedRef });
+      }
+    }
   }, []);
 
   // Wallets - Wallet Standard wallets are auto-detected
