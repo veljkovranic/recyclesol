@@ -175,26 +175,34 @@ export async function scanWalletForCloseableAccounts(
   if (dasAccounts && dasAccounts.length > 0) {
     console.log(`[PumpCleanup] ✨ Using DAS API (1 call)`);
     // Transform DAS format to our format
-    allAccounts = dasAccounts.map((acc: any) => ({
-      pubkey: new PublicKey(acc.address),
-      account: {
-        lamports: acc.lamports || 2039280, // Default rent if not provided
-        data: {
-          parsed: {
-            info: {
-              mint: acc.mint,
-              state: acc.frozen ? 'frozen' : 'initialized',
-              tokenAmount: {
-                amount: acc.amount || '0',
-                decimals: acc.decimals || 0,
-                uiAmount: acc.delegated_amount ? parseFloat(acc.amount) / Math.pow(10, acc.decimals || 0) : 0,
+    allAccounts = dasAccounts.map((acc: any) => {
+      // Properly detect Token-2022 by comparing against the actual program ID
+      // Token-2022: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+      // Token (SPL): TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
+      const isToken2022 = acc.program_id === TOKEN_2022_PROGRAM_ID.toBase58() || 
+                          acc.program_id === 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+      
+      return {
+        pubkey: new PublicKey(acc.address),
+        account: {
+          lamports: acc.lamports || 2039280, // Default rent if not provided
+          data: {
+            parsed: {
+              info: {
+                mint: acc.mint,
+                state: acc.frozen ? 'frozen' : 'initialized',
+                tokenAmount: {
+                  amount: acc.amount || '0',
+                  decimals: acc.decimals || 0,
+                  uiAmount: acc.delegated_amount ? parseFloat(acc.amount) / Math.pow(10, acc.decimals || 0) : 0,
+                },
               },
             },
           },
         },
-      },
-      programId: acc.program_id?.includes('2022') ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID,
-    }));
+        programId: isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID,
+      };
+    });
   } else {
     // Fallback: Standard RPC with parallel fetching
     console.log(`[PumpCleanup] Using standard RPC (2 parallel calls)`);
