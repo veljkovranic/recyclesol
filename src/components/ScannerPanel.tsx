@@ -27,8 +27,6 @@ export const ScannerPanel: React.FC = () => {
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
   const [solBalance, setSolBalance] = useState<number | null>(null);
-  const [sponsorEligible, setSponsorEligible] = useState<boolean | null>(null);
-  const [sponsorCheckDone, setSponsorCheckDone] = useState(false);
   const lastWalletAddress = useRef<string | null>(null);
   
   const {
@@ -51,8 +49,6 @@ export const ScannerPanel: React.FC = () => {
     reset: resetReclaimer,
     feeEnabled,
     getExplorerLink,
-    sponsorInfo,
-    checkSponsor,
   } = usePumpCleanup();
 
   // All closeable accounts are empty (no balance)
@@ -70,8 +66,6 @@ export const ScannerPanel: React.FC = () => {
       resetScanner();
       resetReclaimer();
       setSelectedAccounts(new Set());
-      setSponsorEligible(null);
-      setSponsorCheckDone(false);
       setTimeout(() => scan(), 100);
     }
     
@@ -115,39 +109,6 @@ export const ScannerPanel: React.FC = () => {
       }
     }
   }, [hasScanned, isScanning, emptyAccounts]);
-
-  // Check sponsor eligibility when user has low balance and recoverable accounts
-  useEffect(() => {
-    const checkSponsorEligibility = async () => {
-      if (!sponsorInfo.enabled || !hasScanned || emptyAccounts.length === 0) {
-        setSponsorCheckDone(false);
-        setSponsorEligible(null);
-        return;
-      }
-
-      const hasLowBalance = solBalance !== null && solBalance < MIN_SOL_FOR_FEES;
-      if (!hasLowBalance) {
-        setSponsorCheckDone(true);
-        setSponsorEligible(null);
-        return;
-      }
-
-      const totalLamports = emptyAccounts.reduce((sum, a) => sum + a.rentLamports, 0);
-      
-      const result = await checkSponsor(totalLamports);
-      setSponsorCheckDone(true);
-      
-      if (result && result.needsSponsorship && result.canSponsor) {
-        setSponsorEligible(true);
-        console.log('[ScannerPanel] Sponsor will cover gas fees');
-      } else {
-        setSponsorEligible(false);
-        console.log('[ScannerPanel] Not eligible for sponsorship:', result?.reason);
-      }
-    };
-
-    checkSponsorEligibility();
-  }, [sponsorInfo.enabled, hasScanned, emptyAccounts, solBalance, checkSponsor]);
 
   const showToast = useCallback((message: string) => {
     setToast({ show: true, message });
@@ -204,7 +165,7 @@ export const ScannerPanel: React.FC = () => {
   const feeAmount = feeEnabled ? selectedTotalSol * FEE_PERCENTAGE : 0;
   const userReceives = selectedTotalSol - feeAmount;
 
-  const hasEnoughSol = solBalance === null || solBalance >= MIN_SOL_FOR_FEES || sponsorEligible === true;
+  const hasEnoughSol = solBalance === null || solBalance >= MIN_SOL_FOR_FEES;
 
   const showSuccessScreen = (lastResult?.success || (lastResult?.accountsClosed ?? 0) > 0) && 
     (progress.status === 'success' || progress.status === 'partial_success');
@@ -346,51 +307,19 @@ export const ScannerPanel: React.FC = () => {
               <div className="bg-white border-2 border-recycle-border rounded-2xl overflow-hidden shadow-eco">
                 {emptyAccounts.length > 0 ? (
                   <>
-                    {/* Low SOL Status Messages */}
+                    {/* Low SOL Warning */}
                     {solBalance !== null && solBalance < MIN_SOL_FOR_FEES && (
-                      <>
-                        {!sponsorCheckDone && sponsorInfo.enabled && (
-                          <div className="mx-5 mt-5 bg-recycle-secondary/10 border-2 border-recycle-secondary rounded-xl p-4">
-                            <div className="flex items-center gap-3">
-                              <span className="text-xl animate-spin">♻️</span>
-                              <div>
-                                <h4 className="text-recycle-secondary font-semibold text-sm">Checking Fee Sponsorship...</h4>
-                                <p className="text-xs text-recycle-text-secondary">
-                                  You have low SOL balance. Checking if we can cover your fees.
-                                </p>
-                              </div>
-                            </div>
+                      <div className="mx-5 mt-5 bg-recycle-warning/10 border-2 border-recycle-warning rounded-xl p-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">⚠️</span>
+                          <div>
+                            <h4 className="text-recycle-warning font-semibold text-sm">Insufficient SOL for Fees</h4>
+                            <p className="text-xs text-recycle-text-secondary">
+                              You have {solBalance.toFixed(4)} SOL. You need at least ~0.00005 SOL for transaction fees.
+                            </p>
                           </div>
-                        )}
-
-                        {sponsorCheckDone && sponsorEligible === true && (
-                          <div className="mx-5 mt-5 bg-recycle-success/10 border-2 border-recycle-success rounded-xl p-4">
-                            <div className="flex items-center gap-3">
-                              <span className="text-xl">🌱</span>
-                              <div>
-                                <h4 className="text-recycle-success font-semibold text-sm">Gas Fees Sponsored!</h4>
-                                <p className="text-xs text-recycle-text-secondary">
-                                  We&apos;ll cover the transaction fees for you. Recycle your SOL for free!
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {(sponsorCheckDone && sponsorEligible === false) || (!sponsorInfo.enabled) ? (
-                          <div className="mx-5 mt-5 bg-recycle-warning/10 border-2 border-recycle-warning rounded-xl p-4">
-                            <div className="flex items-center gap-3">
-                              <span className="text-xl">⚠️</span>
-                              <div>
-                                <h4 className="text-recycle-warning font-semibold text-sm">Insufficient SOL for Fees</h4>
-                                <p className="text-xs text-recycle-text-secondary">
-                                  You have {solBalance.toFixed(4)} SOL. You need at least ~0.00005 SOL for transaction fees.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
-                      </>
+                        </div>
+                      </div>
                     )}
 
                     {/* Account List */}

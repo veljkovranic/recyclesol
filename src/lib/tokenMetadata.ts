@@ -121,14 +121,15 @@ async function fetchTokenMetadataBatched(addresses: string[]): Promise<Map<strin
   if (toFetch.length === 0) return result;
 
   // Try DAS API first (single batch call)
+  // DAS is optional - silently falls back to Jupiter if unavailable
   try {
     const dasResult = await fetchFromDAS(toFetch);
     dasResult.forEach((meta, addr) => {
       result.set(addr, meta);
       metadataCache.set(addr, meta);
     });
-  } catch (e) {
-    console.log('[TokenCache] DAS not available');
+  } catch {
+    // Expected on RPC endpoints without DAS support - fall back to Jupiter
   }
 
   // Fall back to Jupiter for missing (single call, filters client-side)
@@ -261,6 +262,7 @@ async function fetchFromDAS(addresses: string[]): Promise<Map<string, TokenMetad
   const result = new Map<string, TokenMetadata>();
 
   // QuickNode uses "getAssets" (not "getAssetBatch")
+  // This will silently fail on RPC endpoints that don't support DAS
   const response = await fetch(RPC_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -275,7 +277,12 @@ async function fetchFromDAS(addresses: string[]): Promise<Map<string, TokenMetad
   if (!response.ok) throw new Error('DAS request failed');
 
   const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
+  
+  // Handle "Method not found" and other RPC errors silently - DAS is optional
+  if (data.error) {
+    // Don't log "Method not found" - it's expected on non-DAS endpoints
+    throw new Error('DAS unavailable');
+  }
 
   // Handle both array result and object with items
   const assets = Array.isArray(data.result) ? data.result : (data.result?.items || []);

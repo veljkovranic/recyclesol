@@ -4,21 +4,19 @@
  * Handles the reclaim operation - closing token accounts and reclaiming rent.
  * This hook manages:
  * - Transaction building and batching
- * - Wallet signing flow (with optional gas sponsorship)
+ * - Wallet signing flow
  * - Progress tracking and status updates
  * - Fee calculation and transfer
  * - Session statistics
  * 
  * The reclaim process:
- * 1. Check if user needs gas sponsorship (low SOL balance)
- * 2. Build transactions to close accounts (batched for efficiency)
- * 3. If sponsored: send to backend for sponsor signature, then get user signature
- * 4. If not sponsored: request wallet signature directly
- * 5. Submit transactions to the network
- * 6. Track and report results
+ * 1. Build transactions to close accounts (batched for efficiency)
+ * 2. Request wallet signature
+ * 3. Submit transactions to the network
+ * 4. Track and report results
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import {
@@ -33,12 +31,6 @@ import {
   SOLANA_NETWORK,
   STATUS_UPDATE_DELAY,
 } from '@/lib/constants';
-import {
-  checkSponsorEligibility,
-  signWithSponsor,
-  getSponsorStatus,
-  SponsorCheckResult,
-} from '@/lib/sponsor';
 
 // ============================================================================
 // TYPES
@@ -95,17 +87,6 @@ export interface SessionStats {
   reclaimCount: number;
 }
 
-export interface SponsorInfo {
-  /** Whether sponsor service is enabled on backend */
-  enabled: boolean;
-  /** Whether current user qualifies for sponsorship */
-  eligible: boolean;
-  /** Reason for eligibility status */
-  reason?: string;
-  /** Sponsor wallet address (if available) */
-  sponsorWallet?: string;
-}
-
 export interface UsePumpCleanupReturn {
   /** Execute the reclaim operation */
   reclaim: (accounts: CloseableAccount[], customDestination?: string) => Promise<ReclaimResult | null>;
@@ -125,10 +106,6 @@ export interface UsePumpCleanupReturn {
   feeEnabled: boolean;
   /** Get explorer URL for a signature */
   getExplorerLink: (signature: string) => string;
-  /** Sponsor availability info */
-  sponsorInfo: SponsorInfo;
-  /** Check sponsor eligibility for given recoverable amount */
-  checkSponsor: (recoverableLamports: number) => Promise<SponsorCheckResult | null>;
 }
 
 // ============================================================================
@@ -156,6 +133,48 @@ const initialStats: SessionStats = {
 // Minimum SOL needed for transaction fees
 const MIN_SOL_FOR_FEES = 0.00005;
 
+// Maximum retry attempts for simulation failures
+const MAX_SIMULATION_RETRIES = 2;
+
+// Delay between retries (ms)
+const RETRY_DELAY = 1500;
+
+/**
+ * Checks if an error is a wallet simulation failure that can be retried
+ */
+function isSimulationError(error: any): boolean {
+  const message = error?.message?.toLowerCase() || '';
+  const name = error?.name?.toLowerCase() || '';
+  
+  return (
+    message.includes('simulation failed') ||
+    message.includes('simulate') ||
+    message.includes('blockhash not found') ||
+    message.includes('block height exceeded') ||
+    message.includes('transaction expired') ||
+    message.includes('unable to simulate') ||
+    message.includes('method not found') ||
+    message.includes('methodnotfound') ||
+    // Solflare-specific error patterns
+    name.includes('walletsigntransactionerror') ||
+    message.includes('user rejected') === false && message.includes('failed to sign')
+  );
+}
+
+/**
+ * Checks if user explicitly rejected the transaction
+ */
+function isUserRejection(error: any): boolean {
+  const message = error?.message?.toLowerCase() || '';
+  return (
+    message.includes('user rejected') ||
+    message.includes('user denied') ||
+    message.includes('user cancelled') ||
+    message.includes('cancelled') ||
+    message.includes('rejected the request')
+  );
+}
+
 export function usePumpCleanup(): UsePumpCleanupReturn {
   const { publicKey, signAllTransactions, signTransaction } = useWallet();
   const { connection } = useConnection();
@@ -163,10 +182,6 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
   const [progress, setProgress] = useState<ReclaimProgress>(initialProgress);
   const [lastResult, setLastResult] = useState<ReclaimResult | null>(null);
   const [sessionStats, setSessionStats] = useState<SessionStats>(initialStats);
-  const [sponsorInfo, setSponsorInfo] = useState<SponsorInfo>({
-    enabled: false,
-    eligible: false,
-  });
 
   // Parse fee recipient once
   const feeRecipientPubkey = useMemo(() => {
@@ -178,55 +193,6 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
       return undefined;
     }
   }, []);
-
-  // Check if sponsor service is available on mount
-  useEffect(() => {
-    const checkSponsorAvailability = async () => {
-      try {
-        const status = await getSponsorStatus();
-        if (status) {
-          setSponsorInfo(prev => ({
-            ...prev,
-            enabled: status.enabled,
-            sponsorWallet: status.publicKey || undefined,
-          }));
-          console.log('[PumpCleanup] Sponsor service:', status.enabled ? 'available' : 'disabled');
-        }
-      } catch (error) {
-        console.log('[PumpCleanup] Sponsor service unavailable');
-      }
-    };
-    checkSponsorAvailability();
-  }, []);
-
-  /**
-   * Check sponsor eligibility for a specific recoverable amount
-   */
-  const checkSponsor = useCallback(async (recoverableLamports: number): Promise<SponsorCheckResult | null> => {
-    if (!publicKey) return null;
-    
-    try {
-      const result = await checkSponsorEligibility(
-        publicKey.toBase58(),
-        recoverableLamports,
-        5000 // Estimated fee
-      );
-      
-      if (result) {
-        setSponsorInfo(prev => ({
-          ...prev,
-          eligible: result.needsSponsorship && result.canSponsor,
-          reason: result.reason,
-          sponsorWallet: result.sponsorWallet || undefined,
-        }));
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('[PumpCleanup] Sponsor check failed:', error);
-      return null;
-    }
-  }, [publicKey]);
 
   /**
    * Updates progress state with a delay for visual feedback.
@@ -321,73 +287,6 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
         const userLamports = totalLamports - feeLamports;
         const userSol = userLamports / 1e9;
 
-        // Check user's balance to determine if sponsorship is needed
-        let userBalance = 0;
-        try {
-          userBalance = await connection.getBalance(publicKey);
-        } catch (e) {
-          console.warn('[PumpCleanup] Failed to fetch balance, assuming sufficient');
-          userBalance = 1000000; // Assume sufficient if we can't check
-        }
-
-        const needsSponsorship = userBalance < MIN_SOL_FOR_FEES * 1e9;
-        let useSponsor = false;
-
-        if (needsSponsorship && sponsorInfo.enabled) {
-          updateProgress({
-            status: 'preparing',
-            message: 'Checking gas sponsorship...',
-            percentage: 8,
-          });
-
-          const sponsorCheck = await checkSponsorEligibility(
-            publicKey.toBase58(),
-            totalLamports,
-            5000
-          );
-
-          if (sponsorCheck?.needsSponsorship && sponsorCheck?.canSponsor) {
-            useSponsor = true;
-            console.log('[PumpCleanup] Using gas sponsorship from:', sponsorCheck.sponsorWallet);
-          } else if (sponsorCheck?.needsSponsorship && !sponsorCheck?.canSponsor) {
-            // User needs sponsorship but doesn't qualify
-            setLastResult({
-              success: false,
-              accountsClosed: 0,
-              lamportsReclaimed: 0,
-              solReclaimed: 0,
-              solKept: 0,
-              feePaid: 0,
-              signatures: [],
-              error: sponsorCheck.reason || 'Insufficient SOL for transaction fees',
-            });
-            updateProgress({
-              status: 'error',
-              message: sponsorCheck.reason || 'Insufficient SOL for fees',
-              percentage: 0,
-            });
-            return null;
-          }
-        } else if (needsSponsorship && !sponsorInfo.enabled) {
-          // User needs sponsorship but it's not available
-          setLastResult({
-            success: false,
-            accountsClosed: 0,
-            lamportsReclaimed: 0,
-            solReclaimed: 0,
-            solKept: 0,
-            feePaid: 0,
-            signatures: [],
-            error: 'Insufficient SOL for transaction fees',
-          });
-          updateProgress({
-            status: 'error',
-            message: 'Insufficient SOL for fees',
-            percentage: 0,
-          });
-          return null;
-        }
-
         // Build transactions
         const transactions = await createCloseAccountTransactions(
           accounts,
@@ -402,107 +301,101 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
           percentage: 10,
         });
 
-        let signedTransactions: Transaction[];
+        let signedTransactions: Transaction[] = [];
 
-        // SPONSORED FLOW: Get sponsor signature first, then user signature
-        if (useSponsor) {
-          updateProgress({
-            status: 'preparing',
-            message: 'Getting sponsor signature...',
-            percentage: 12,
-          });
+        // Sign transactions - with retry loop for handling wallet simulation failures (common with Solflare)
+        let retryCount = 0;
+        let currentTransactions = transactions;
 
-          const sponsoredTransactions: Transaction[] = [];
-
-          for (let i = 0; i < transactions.length; i++) {
-            const tx = transactions[i];
-            
-            // Serialize transaction for sponsor signing
-            // Note: Transaction needs to be serializable without signatures
-            const txBase64 = tx.serialize({
-              requireAllSignatures: false,
-              verifySignatures: false,
-            }).toString('base64');
-
-            const sponsorResult = await signWithSponsor(
-              txBase64,
-              publicKey.toBase58(),
-              totalLamports
-            );
-
-            if (!sponsorResult) {
-              throw new Error('Failed to get sponsor signature');
-            }
-
-            // Deserialize the sponsor-signed transaction
-            const sponsoredTxBuffer = Buffer.from(sponsorResult.signedTransaction, 'base64');
-            const sponsoredTx = Transaction.from(sponsoredTxBuffer);
-            sponsoredTransactions.push(sponsoredTx);
-          }
-
-          // Now get user signature for all sponsor-signed transactions
+        while (retryCount <= MAX_SIMULATION_RETRIES) {
           updateProgress({
             status: 'awaiting_signature',
-            message: `Please sign ${sponsoredTransactions.length} transaction${sponsoredTransactions.length > 1 ? 's' : ''} in your wallet...`,
-            percentage: 15,
-          });
-
-          try {
-            if (signAllTransactions) {
-              signedTransactions = await signAllTransactions(sponsoredTransactions);
-            } else if (signTransaction) {
-              signedTransactions = [];
-              for (const tx of sponsoredTransactions) {
-                const signed = await signTransaction(tx);
-                signedTransactions.push(signed);
-              }
-            } else {
-              throw new Error('No signing method available');
-            }
-          } catch (error: any) {
-            console.log('[PumpCleanup] Signing cancelled or failed:', error?.message);
-            updateProgress(initialProgress);
-            return {
-              success: false,
-              accountsClosed: 0,
-              lamportsReclaimed: 0,
-              solReclaimed: 0,
-              solKept: 0,
-              feePaid: 0,
-              signatures: [],
-              error: 'cancelled',
-            };
-          }
-        } else {
-          // NORMAL FLOW: User pays for gas, sign directly
-          updateProgress({
-            status: 'awaiting_signature',
-            message: `Please sign ${transactions.length} transaction${transactions.length > 1 ? 's' : ''} in your wallet...`,
+            message: retryCount > 0 
+              ? `Retrying... Please sign ${currentTransactions.length} transaction${currentTransactions.length > 1 ? 's' : ''} in your wallet...`
+              : `Please sign ${currentTransactions.length} transaction${currentTransactions.length > 1 ? 's' : ''} in your wallet...`,
             percentage: 15,
           });
 
           try {
             if (signAllTransactions) {
               // Preferred: Sign all transactions at once
-              signedTransactions = await signAllTransactions(transactions);
+              signedTransactions = await signAllTransactions(currentTransactions);
             } else if (signTransaction) {
               // Fallback: Sign transactions one by one
               signedTransactions = [];
-              for (const tx of transactions) {
+              for (const tx of currentTransactions) {
                 const signed = await signTransaction(tx);
                 signedTransactions.push(signed);
               }
             } else {
               throw new Error('No signing method available');
             }
+            
+            // If we get here, signing succeeded
+            break;
           } catch (error: any) {
-            // User rejected or signing failed - just go back to idle quietly
-            console.log('[PumpCleanup] Signing cancelled or failed:', error?.message);
+            // Check if user explicitly rejected
+            if (isUserRejection(error)) {
+              console.log('[PumpCleanup] User rejected transaction');
+              updateProgress(initialProgress);
+              return {
+                success: false,
+                accountsClosed: 0,
+                lamportsReclaimed: 0,
+                solReclaimed: 0,
+                solKept: 0,
+                feePaid: 0,
+                signatures: [],
+                error: 'cancelled',
+              };
+            }
             
-            // Reset to idle state (no error display)
-            updateProgress(initialProgress);
+            // Check if this is a simulation error we can retry
+            if (isSimulationError(error) && retryCount < MAX_SIMULATION_RETRIES) {
+              retryCount++;
+              console.log(`[PumpCleanup] Simulation failed, retrying (${retryCount}/${MAX_SIMULATION_RETRIES})...`, error?.message);
+              
+              updateProgress({
+                status: 'preparing',
+                message: `Wallet simulation failed, refreshing transaction (attempt ${retryCount + 1})...`,
+                percentage: 12,
+              });
+              
+              // Wait before retrying
+              await new Promise(r => setTimeout(r, RETRY_DELAY));
+              
+              // Rebuild transactions with fresh blockhash
+              try {
+                currentTransactions = await createCloseAccountTransactions(
+                  accounts,
+                  publicKey,
+                  feeRecipientPubkey,
+                  FEE_ENABLED ? FEE_PERCENTAGE : 0,
+                  destinationPubkey
+                );
+              } catch (rebuildError: any) {
+                console.error('[PumpCleanup] Failed to rebuild transactions:', rebuildError);
+                throw new Error('Failed to refresh transaction. Please try again.');
+              }
+              
+              continue;
+            }
             
-            // Return cancelled result (not an error)
+            // Non-retryable error or max retries exceeded
+            console.log('[PumpCleanup] Signing failed:', error?.message);
+            
+            // Provide a more helpful error message for simulation failures
+            let userMessage = 'Transaction signing failed';
+            if (isSimulationError(error)) {
+              userMessage = 'Wallet simulation failed. Some accounts may have already been closed. Please rescan your wallet.';
+            }
+            
+            updateProgress({
+              status: 'error',
+              message: userMessage,
+              percentage: 0,
+            });
+            
             return {
               success: false,
               accountsClosed: 0,
@@ -511,12 +404,32 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
               solKept: 0,
               feePaid: 0,
               signatures: [],
-              error: 'cancelled', // Special marker for cancelled
+              error: userMessage,
             };
           }
         }
 
-        // STEP 3: Submit transactions
+        // If we exhausted all retries without success
+        if (!signedTransactions || signedTransactions.length === 0) {
+          const userMessage = 'Transaction signing failed after multiple attempts. Please rescan your wallet and try again.';
+          updateProgress({
+            status: 'error',
+            message: userMessage,
+            percentage: 0,
+          });
+          return {
+            success: false,
+            accountsClosed: 0,
+            lamportsReclaimed: 0,
+            solReclaimed: 0,
+            solKept: 0,
+            feePaid: 0,
+            signatures: [],
+            error: userMessage,
+          };
+        }
+
+        // STEP 2: Submit transactions
         updateProgress({
           status: 'submitting',
           message: 'Submitting transactions...',
@@ -542,11 +455,27 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
           });
 
           try {
-            // Send the raw transaction
-            const signature = await connection.sendRawTransaction(tx.serialize(), {
-              skipPreflight: false,
-              preflightCommitment: 'confirmed',
-            });
+            let signature: string;
+            
+            // Try sending with preflight first, fall back to skipping preflight on simulation failure
+            try {
+              signature = await connection.sendRawTransaction(tx.serialize(), {
+                skipPreflight: false,
+                preflightCommitment: 'confirmed',
+              });
+            } catch (preflightError: any) {
+              // If preflight fails with simulation error, retry with skipPreflight
+              const preflightMsg = preflightError?.message?.toLowerCase() || '';
+              if (preflightMsg.includes('simulation') || preflightMsg.includes('preflight')) {
+                console.log(`[PumpCleanup] Preflight failed for tx ${i + 1}, retrying with skipPreflight...`);
+                signature = await connection.sendRawTransaction(tx.serialize(), {
+                  skipPreflight: true,
+                  preflightCommitment: 'confirmed',
+                });
+              } else {
+                throw preflightError;
+              }
+            }
 
             signatures.push(signature);
 
@@ -704,7 +633,7 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
         return result;
       }
     },
-    [publicKey, signAllTransactions, signTransaction, connection, feeRecipientPubkey, updateProgress, sponsorInfo.enabled]
+    [publicKey, signAllTransactions, signTransaction, connection, feeRecipientPubkey, updateProgress]
   );
 
   /**
@@ -737,8 +666,6 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
     feePercentage: FEE_PERCENTAGE,
     feeEnabled: FEE_ENABLED,
     getExplorerLink,
-    sponsorInfo,
-    checkSponsor,
   };
 }
 
