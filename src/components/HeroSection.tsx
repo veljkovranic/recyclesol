@@ -137,8 +137,8 @@ export const HeroSection: React.FC = () => {
 
         {/* Subtitle */}
         <p className="relative text-lg md:text-xl text-cleanup-text-secondary mb-8 max-w-2xl leading-relaxed">
-          Every token account on Solana locks ~<span className="text-cleanup-primary font-semibold">0.002 SOL</span> as rent. 
-          Selling tokens doesn&apos;t return it. We help you close empty accounts and get your SOL back instantly - often adding up to a full meal 🍕 or more.
+          Every leftover slot in your Solana wallet holds about <span className="text-cleanup-primary font-semibold">0.002 SOL</span> you can&apos;t use.
+          Selling your coins doesn&apos;t bring it back. We clean up those empty leftovers so you get your SOL back instantly - often enough for a full meal 🍕 or more.
         </p>
 
         {/* CTA Area */}
