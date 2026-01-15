@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { shortenAddress } from '@/lib/solana';
-import { useWalletRentScanner, usePumpCleanup } from '@/hooks';
+import { useWalletRentScanner, usePumpCleanup, useReferral } from '@/hooks';
 import { FEE_PERCENTAGE } from '@/lib/constants';
 import AccountsList from './AccountsList';
 import ReclaimButton from './ReclaimButton';
@@ -16,6 +16,7 @@ import ProgressIndicator from './ProgressIndicator';
 import SessionStats from './SessionStats';
 import Confetti from './Confetti';
 import Toast from './Toast';
+import ReferralBanner from './ReferralBanner';
 
 // Minimum SOL needed for transaction fees
 const MIN_SOL_FOR_FEES = 0.00005;
@@ -50,6 +51,8 @@ export const ScannerPanel: React.FC = () => {
     feeEnabled,
     getExplorerLink,
   } = usePumpCleanup();
+
+  const { referrerAddress, referrerCode, recordReferralEarning } = useReferral();
 
   // All closeable accounts are empty (no balance)
   const emptyAccounts = closeableAccounts;
@@ -141,14 +144,23 @@ export const ScannerPanel: React.FC = () => {
 
   const handleReclaim = async () => {
     if (selectedAccountsList.length > 0) {
-      const result = await reclaim(selectedAccountsList);
+      const result = await reclaim(selectedAccountsList, {
+        referrer: referrerAddress || undefined,
+      });
       
       if (result?.error === 'cancelled') {
         showToast('Transaction cancelled');
         return;
       }
       
-      if (result?.success) {
+      if (result?.success || (result?.accountsClosed ?? 0) > 0) {
+        // Record referral earning if there was a referrer
+        if (referrerCode && result?.feePaid && result.feePaid > 0) {
+          // Referrer gets 50% of the fee
+          const referrerEarning = Math.floor((result.feePaid * 1e9) * 0.5);
+          recordReferralEarning(referrerEarning);
+        }
+        
         resetScanner();
         setSelectedAccounts(new Set());
       }
@@ -228,6 +240,11 @@ export const ScannerPanel: React.FC = () => {
             className="mt-3 w-full py-4 bg-cleanup-card border border-cleanup-border rounded-xl font-medium text-white hover:bg-cleanup-hover transition-colors">
             Try Another Wallet
           </button>
+
+          {/* Referral Banner after success */}
+          <div className="mt-6">
+            <ReferralBanner variant="full" />
+          </div>
         </div>
       )}
 
@@ -365,6 +382,9 @@ export const ScannerPanel: React.FC = () => {
                   ❄️ {frozenCount} frozen accounts excluded (cannot be closed)
                 </p>
               )}
+
+              {/* Referral Banner */}
+              <ReferralBanner variant="compact" className="mt-4" />
             </div>
           )}
         </>

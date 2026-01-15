@@ -10,8 +10,9 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Header, HeroSection, ScannerPanel, Footer, RecentPayouts } from '@/components';
-import { getCachedTotalSolReclaimed } from '@/components/RecentPayouts';
+import { getCachedTotalSolReclaimed, getCachedUsersServed } from '@/components/RecentPayouts';
 import { faqs } from './faq';
+import { REFERRAL_SHARE_PERCENTAGE } from '@/lib/constants';
 
 export default function Home() {
   const { connected } = useWallet();
@@ -61,8 +62,9 @@ export default function Home() {
             ) : (
               <>
                 <HeroSection />
-                <RecentPayouts />
                 <StatsSection />
+                <ReferralBannerPreview />
+                <RecentPayouts />
                 <FeaturesSection />
                 <HowItWorksSection />
                 <FAQSection />
@@ -82,11 +84,15 @@ export default function Home() {
  */
 const StatsSection: React.FC = () => {
   const [totalSol, setTotalSol] = useState(0);
+  const [usersServed, setUsersServed] = useState(0);
 
   useEffect(() => {
-    const updateTotal = () => setTotalSol(getCachedTotalSolReclaimed());
-    updateTotal();
-    const interval = setInterval(updateTotal, 2000);
+    const updateStats = () => {
+      setTotalSol(getCachedTotalSolReclaimed());
+      setUsersServed(getCachedUsersServed());
+    };
+    updateStats();
+    const interval = setInterval(updateStats, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -94,19 +100,21 @@ const StatsSection: React.FC = () => {
     { 
       value: totalSol > 0 ? `${totalSol.toFixed(2)}+` : '---', 
       label: 'SOL Reclaimed',
-      suffix: totalSol > 0 ? '' : ''
     },
-    { value: '~0.002', label: 'SOL per Account', suffix: '' },
-    { value: '10%', label: 'Service Fee', suffix: '' },
+    { 
+      value: usersServed > 0 ? `${usersServed}+` : '---', 
+      label: 'Users Served',
+    },
+    { value: '10%', label: 'Service Fee' },
   ];
 
   return (
-    <section className="w-full max-w-4xl mx-auto px-4 py-12">
+    <section className="w-full max-w-4xl mx-auto px-4 py-6">
       <div className="grid grid-cols-3 gap-6">
         {stats.map((stat, i) => (
           <div key={i} className="text-center">
             <div className="text-3xl md:text-4xl font-bold font-display gradient-text mb-2">
-              {stat.value}{stat.suffix}
+              {stat.value}
             </div>
             <div className="text-sm text-cleanup-text-secondary">{stat.label}</div>
           </div>
@@ -229,6 +237,26 @@ const HowItWorksSection: React.FC = () => {
             </div>
           </div>
         ))}
+      </div>
+    </section>
+  );
+};
+
+/**
+ * Referral Banner Preview - compact purple banner for landing page
+ */
+const ReferralBannerPreview: React.FC = () => {
+  const referralShareDisplay = Math.round(REFERRAL_SHARE_PERCENTAGE * 100);
+
+  return (
+    <section className="w-full max-w-2xl mx-auto px-4 py-3">
+      <div className="border border-purple-500/30 rounded-lg py-2.5 px-4 bg-purple-500/5">
+        <p className="text-center text-sm text-cleanup-text-secondary">
+          <span className="text-purple-400">🎁</span>
+          {' '}Earn <span className="text-cleanup-secondary font-semibold">{referralShareDisplay}%</span> from your referrals
+          <span className="text-cleanup-text-muted mx-1.5">·</span>
+          <span className="text-purple-300/80">invite friends &amp; earn SOL</span>
+        </p>
       </div>
     </section>
   );

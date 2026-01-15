@@ -12,6 +12,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { recentCleanupsRouter } from './routes/recentCleanups';
 import { sponsorGasRouter } from './routes/sponsorGas';
+import { referralRouter } from './routes/referral';
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api', recentCleanupsRouter);
 app.use('/api/sponsor', sponsorGasRouter);
+app.use('/api/referral', referralRouter);
 
 // Start server
 app.listen(PORT, () => {

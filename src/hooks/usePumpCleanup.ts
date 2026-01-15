@@ -30,6 +30,7 @@ import {
   FEE_ENABLED,
   SOLANA_NETWORK,
   STATUS_UPDATE_DELAY,
+  REFERRAL_SHARE_PERCENTAGE,
 } from '@/lib/constants';
 
 // ============================================================================
@@ -87,9 +88,16 @@ export interface SessionStats {
   reclaimCount: number;
 }
 
+export interface ReclaimOptions {
+  /** Custom destination for rent refund */
+  customDestination?: string;
+  /** Referrer wallet address (gets a share of the fee) */
+  referrer?: string;
+}
+
 export interface UsePumpCleanupReturn {
   /** Execute the reclaim operation */
-  reclaim: (accounts: CloseableAccount[], customDestination?: string) => Promise<ReclaimResult | null>;
+  reclaim: (accounts: CloseableAccount[], options?: ReclaimOptions) => Promise<ReclaimResult | null>;
   /** Current progress of the reclaim operation */
   progress: ReclaimProgress;
   /** Whether a reclaim is in progress */
@@ -207,21 +215,32 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
    * Flow:
    * 1. Validate wallet and accounts
    * 2. Build close transactions (batched)
-   * 3. Add fee transaction if enabled
+   * 3. Add fee transaction if enabled (with referral split if applicable)
    * 4. Sign all transactions via wallet
    * 5. Submit each transaction sequentially
    * 6. Track results and update stats
    */
   const reclaim = useCallback(
-    async (accounts: CloseableAccount[], customDestination?: string): Promise<ReclaimResult | null> => {
+    async (accounts: CloseableAccount[], options?: ReclaimOptions): Promise<ReclaimResult | null> => {
       // Parse custom destination if provided
       let destinationPubkey: PublicKey | undefined;
-      if (customDestination) {
+      if (options?.customDestination) {
         try {
-          destinationPubkey = new PublicKey(customDestination);
-          console.log('[PumpCleanup] Using custom destination:', customDestination);
+          destinationPubkey = new PublicKey(options.customDestination);
+          console.log('[PumpCleanup] Using custom destination:', options.customDestination);
         } catch {
           console.warn('Invalid custom destination, using default');
+        }
+      }
+
+      // Parse referrer if provided
+      let referrerPubkey: PublicKey | undefined;
+      if (options?.referrer) {
+        try {
+          referrerPubkey = new PublicKey(options.referrer);
+          console.log('[PumpCleanup] Using referrer:', options.referrer);
+        } catch {
+          console.warn('Invalid referrer address, ignoring');
         }
       }
       // Validate prerequisites
@@ -287,12 +306,16 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
         const userLamports = totalLamports - feeLamports;
         const userSol = userLamports / 1e9;
 
-        // Build transactions
+        // Build transactions with fee options
         const transactions = await createCloseAccountTransactions(
           accounts,
           publicKey,
-          feeRecipientPubkey,
-          FEE_ENABLED ? FEE_PERCENTAGE : 0,
+          FEE_ENABLED ? {
+            feeRecipient: feeRecipientPubkey,
+            feePercentage: FEE_PERCENTAGE,
+            referrer: referrerPubkey,
+            referralShare: REFERRAL_SHARE_PERCENTAGE,
+          } : undefined,
           destinationPubkey // Custom destination for rent refund
         );
 
@@ -369,8 +392,12 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
                 currentTransactions = await createCloseAccountTransactions(
                   accounts,
                   publicKey,
-                  feeRecipientPubkey,
-                  FEE_ENABLED ? FEE_PERCENTAGE : 0,
+                  FEE_ENABLED ? {
+                    feeRecipient: feeRecipientPubkey,
+                    feePercentage: FEE_PERCENTAGE,
+                    referrer: referrerPubkey,
+                    referralShare: REFERRAL_SHARE_PERCENTAGE,
+                  } : undefined,
                   destinationPubkey
                 );
               } catch (rebuildError: any) {

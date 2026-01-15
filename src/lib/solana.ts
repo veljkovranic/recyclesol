@@ -314,6 +314,20 @@ export async function scanWalletForCloseableAccounts(
 // ============================================================================
 
 /**
+ * Options for fee distribution in close account transactions.
+ */
+export interface FeeOptions {
+  /** Platform fee recipient address */
+  feeRecipient?: PublicKey;
+  /** Total fee percentage (0-1) */
+  feePercentage?: number;
+  /** Referrer wallet address (gets a share of the fee) */
+  referrer?: PublicKey;
+  /** Percentage of fee to share with referrer (0-1), default 0.5 (50%) */
+  referralShare?: number;
+}
+
+/**
  * Creates transactions to close multiple token accounts.
  * 
  * Batches close instructions into multiple transactions to avoid
@@ -321,22 +335,26 @@ export async function scanWalletForCloseableAccounts(
  * 
  * @param accounts - Array of accounts to close (must be empty)
  * @param owner - The wallet that owns these accounts (signs the tx)
- * @param feeRecipient - Optional fee recipient address
- * @param feePercentage - Optional fee percentage (0-1)
+ * @param feeOptions - Fee configuration including referral support
  * @param customDestination - Optional custom destination for rent refund
  * @returns Array of transactions ready to be signed
  */
 export async function createCloseAccountTransactions(
   accounts: CloseableAccount[],
   owner: PublicKey,
-  feeRecipient?: PublicKey,
-  feePercentage: number = 0,
+  feeOptions?: FeeOptions,
   customDestination?: PublicKey
 ): Promise<Transaction[]> {
   // Destination for rent refund - custom or owner
   const rentDestination = customDestination || owner;
   const connection = getConnection();
   const transactions: Transaction[] = [];
+
+  // Extract fee options with defaults
+  const feeRecipient = feeOptions?.feeRecipient;
+  const feePercentage = feeOptions?.feePercentage || 0;
+  const referrer = feeOptions?.referrer;
+  const referralShare = feeOptions?.referralShare || 0.5; // 50% default
 
   // Get recent blockhash for transaction validity
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
@@ -375,19 +393,53 @@ export async function createCloseAccountTransactions(
       transaction.add(closeInstruction);
     }
 
-    // If fee collection is enabled, add fee transfer to THIS transaction
+    // If fee collection is enabled, add fee transfer(s) to THIS transaction
     if (feeRecipient && feePercentage > 0) {
       const batchLamports = batch.reduce((sum, acc) => sum + acc.rentLamports, 0);
-      const feeLamports = Math.floor(batchLamports * feePercentage);
+      const totalFeeLamports = Math.floor(batchLamports * feePercentage);
 
-      if (feeLamports > 0) {
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: owner,
-            toPubkey: feeRecipient,
-            lamports: feeLamports,
-          })
-        );
+      if (totalFeeLamports > 0) {
+        // Check if there's a valid referrer (and not self-referral)
+        const hasValidReferrer = referrer && !referrer.equals(owner) && !referrer.equals(feeRecipient);
+
+        if (hasValidReferrer) {
+          // Split fee between referrer and platform
+          const referrerFeeLamports = Math.floor(totalFeeLamports * referralShare);
+          const platformFeeLamports = totalFeeLamports - referrerFeeLamports;
+
+          // Transfer to referrer
+          if (referrerFeeLamports > 0) {
+            transaction.add(
+              SystemProgram.transfer({
+                fromPubkey: owner,
+                toPubkey: referrer,
+                lamports: referrerFeeLamports,
+              })
+            );
+          }
+
+          // Transfer to platform
+          if (platformFeeLamports > 0) {
+            transaction.add(
+              SystemProgram.transfer({
+                fromPubkey: owner,
+                toPubkey: feeRecipient,
+                lamports: platformFeeLamports,
+              })
+            );
+          }
+
+          console.log(`[PumpCleanup] Fee split: ${referrerFeeLamports} to referrer, ${platformFeeLamports} to platform`);
+        } else {
+          // No referrer - all fee goes to platform
+          transaction.add(
+            SystemProgram.transfer({
+              fromPubkey: owner,
+              toPubkey: feeRecipient,
+              lamports: totalFeeLamports,
+            })
+          );
+        }
       }
     }
 

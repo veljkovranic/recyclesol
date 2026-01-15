@@ -40,6 +40,13 @@ export function getCachedTotalSolReclaimed(): number {
   return cachedTotalSol;
 }
 
+export function getCachedUsersServed(): number {
+  if (!cachedPayouts) return 0;
+  // Count unique wallets
+  const uniqueWallets = new Set(cachedPayouts.map(p => p.wallet));
+  return uniqueWallets.size;
+}
+
 async function fetchPayoutsFromApi(): Promise<PayoutEntry[]> {
   if (cachedPayouts && (Date.now() - cacheTimestamp) < CACHE_TTL) {
     return cachedPayouts;

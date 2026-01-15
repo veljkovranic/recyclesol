@@ -16,4 +16,4 @@ export { Confetti } from './Confetti';
 export { Toast } from './Toast';
 export { RecentPayouts } from './RecentPayouts';
 export { CustomDestinationModal } from './CustomDestinationModal';
-
+export { ReferralBanner } from './ReferralBanner';

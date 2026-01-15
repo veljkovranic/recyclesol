@@ -58,6 +58,36 @@ export const FEE_RECIPIENT = process.env.NEXT_PUBLIC_FEE_RECIPIENT || '';
 export const FEE_ENABLED = FEE_RECIPIENT !== '' && FEE_RECIPIENT !== 'YourFeeWalletAddressHere';
 
 // ============================================================================
+// REFERRAL CONFIGURATION
+// ============================================================================
+
+/**
+ * Percentage of fees shared with referrers.
+ * Default: 0.50 (50% of the fee goes to the referrer)
+ * 
+ * Example: If FEE_PERCENTAGE is 10% and REFERRAL_SHARE is 50%,
+ * referrer gets 5% of total reclaimed, platform gets 5%.
+ */
+export const REFERRAL_SHARE_PERCENTAGE = parseFloat(
+  process.env.NEXT_PUBLIC_REFERRAL_SHARE_PERCENTAGE || '0.50'
+);
+
+/**
+ * Local storage key for storing referrer wallet address.
+ */
+export const REFERRAL_STORAGE_KEY = 'pumpcleanup_referrer';
+
+/**
+ * URL parameter name for referral codes.
+ */
+export const REFERRAL_PARAM = 'ref';
+
+/**
+ * Backend API URL for referral service.
+ */
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+
+// ============================================================================
 // TRANSACTION CONFIGURATION
 // ============================================================================
 

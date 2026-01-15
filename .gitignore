@@ -38,5 +38,5 @@ next-env.d.ts
 .vscode
 .idea
 
-
-
+# Backend data (referrals, etc.)
+backend/data/
