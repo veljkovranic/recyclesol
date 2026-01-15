@@ -1,0 +1,35 @@
+{
+  "name": "pumpcleanup-twitter-bot",
+  "version": "1.0.0",
+  "description": "Twitter bot that scans Solana wallets for reclaimable rent",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "test": "tsx src/test.ts",
+    "lint": "eslint src/**/*.ts"
+  },
+  "keywords": [
+    "twitter",
+    "solana",
+    "bot",
+    "rent",
+    "cleanup"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.56",
+    "@solana/spl-token": "^0.4.8",
+    "@solana/web3.js": "^1.95.3",
+    "dotenv": "^16.4.5",
+    "twitter-api-v2": "^1.17.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4"
+  }
+}
+
