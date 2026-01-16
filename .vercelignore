@@ -1,0 +1,6 @@
+# Ignore twitter-bot - it's a separate project
+twitter-bot/
+
+# Ignore backend - deployed separately
+backend/
+
