@@ -232,10 +232,10 @@ export function useReferral(): UseReferralReturn {
       }
     } catch (error) {
       console.error('[Referral] Failed to fetch referral code:', error);
-      // Fallback to wallet address if API fails
+      // Fallback to wallet address in path format if API fails
       if (isBrowser) {
         const baseUrl = window.location.origin;
-        setMyReferralLink(`${baseUrl}?${REFERRAL_PARAM}=${publicKey.toBase58()}`);
+        setMyReferralLink(`${baseUrl}/${publicKey.toBase58()}`);
       }
     } finally {
       setIsLoading(false);

@@ -295,8 +295,9 @@ export function getGlobalStats() {
 
 /**
  * Gets the full referral link for a code
+ * Uses path format: pumpcleanup.com/XXXXXX
  */
 export function getReferralLink(code: string): string {
-  return `${BASE_URL}?ref=${code}`;
+  return `${BASE_URL}/${code}`;
 }
 
