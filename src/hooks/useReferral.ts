@@ -265,9 +265,23 @@ export function useReferral(): UseReferralReturn {
       } else {
         // No URL param - check localStorage for existing referrer
         const storedReferrer = getStoredReferrer();
-        if (storedReferrer && isValidPublicKey(storedReferrer)) {
-          setReferrerAddress(storedReferrer);
-          console.log('[Referral] Referrer loaded from storage:', storedReferrer);
+        if (storedReferrer) {
+          // Check if it's already a wallet address
+          if (isValidPublicKey(storedReferrer)) {
+            setReferrerAddress(storedReferrer);
+            console.log('[Referral] Referrer loaded from storage (wallet):', storedReferrer);
+          } else {
+            // It's a short code - resolve it via API
+            console.log('[Referral] Resolving short code from storage:', storedReferrer);
+            const walletAddress = await resolveReferralCode(storedReferrer);
+            if (walletAddress) {
+              // Update storage with the resolved wallet address
+              storeReferrer(walletAddress);
+              setReferrerAddress(walletAddress);
+              setReferrerCode(storedReferrer.toUpperCase());
+              console.log('[Referral] Resolved code to wallet:', storedReferrer, '->', walletAddress);
+            }
+          }
         }
       }
     };
