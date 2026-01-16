@@ -98,11 +98,11 @@ const StatsSection: React.FC = () => {
 
   const stats = [
     { 
-      value: totalSol > 0 ? `${totalSol.toFixed(2)}+` : '---', 
+      value: '1.3', 
       label: 'SOL Reclaimed',
     },
     { 
-      value: usersServed > 0 ? `${usersServed}+` : '---', 
+      value: '20+', 
       label: 'Users Served',
     },
     { value: '10%', label: 'Service Fee' },
