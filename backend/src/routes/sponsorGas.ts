@@ -77,10 +77,23 @@ router.post('/check', async (req: Request, res: Response) => {
   try {
     const { userWallet, recoverableAmountLamports, estimatedFeeLamports } = req.body;
 
-    if (!userWallet || !recoverableAmountLamports) {
+    if (!userWallet) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: userWallet, recoverableAmountLamports',
+        error: 'Missing required field: userWallet',
+      });
+    }
+
+    // Sponsorship requires user to have recoverable accounts
+    if (!recoverableAmountLamports || recoverableAmountLamports <= 0) {
+      return res.json({
+        success: true,
+        data: {
+          needsSponsorship: false,
+          canSponsor: false,
+          userBalanceLamports: 0,
+          reason: 'No recoverable accounts - sponsorship not applicable',
+        },
       });
     }
 
@@ -97,7 +110,11 @@ router.post('/check', async (req: Request, res: Response) => {
     }
 
     const estimatedFee = estimatedFeeLamports || 5000; // Default ~0.000005 SOL
-    const needsSponsorship = userBalance < estimatedFee;
+    
+    // Sponsorship is ONLY for users with exactly 0 SOL balance
+    // Users with any balance (even less than fee) should not get sponsorship
+    const hasZeroBalance = userBalance === 0;
+    const needsSponsorship = hasZeroBalance;
 
     if (!needsSponsorship) {
       return res.json({
@@ -105,12 +122,14 @@ router.post('/check', async (req: Request, res: Response) => {
         data: {
           needsSponsorship: false,
           userBalanceLamports: userBalance,
-          reason: 'User has sufficient balance',
+          reason: userBalance > 0 
+            ? 'User has SOL balance - sponsorship only available for wallets with exactly 0 SOL'
+            : 'User has sufficient balance',
         },
       });
     }
 
-    // Check if we can sponsor
+    // Check if we can sponsor (user has 0 SOL AND has recoverable accounts)
     const sponsorCheck = canSponsor(estimatedFee, recoverableAmountLamports);
 
     res.json({

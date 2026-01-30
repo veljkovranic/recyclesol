@@ -95,12 +95,19 @@ export const ScannerPanel: React.FC = () => {
     fetchBalance();
   }, [publicKey, connection]);
 
+  // Only check sponsor status when user has exactly 0 SOL AND has accounts to recover
   useEffect(() => {
     const fetchSponsorStatus = async () => {
-      if (solBalance === null || solBalance >= MIN_SOL_FOR_FEES) {
+      // Sponsorship is only available for users with exactly 0 SOL balance
+      // AND who have something to recover
+      const hasZeroBalance = solBalance !== null && solBalance === 0;
+      const hasRecoverableAccounts = hasScanned && emptyAccounts.length > 0;
+      
+      if (!hasZeroBalance || !hasRecoverableAccounts) {
         setSponsorEnabled(false);
         return;
       }
+      
       try {
         const response = await fetch('/api/sponsor/status');
         const payload = await response.json();
@@ -112,7 +119,7 @@ export const ScannerPanel: React.FC = () => {
     };
 
     fetchSponsorStatus();
-  }, [solBalance]);
+  }, [solBalance, hasScanned, emptyAccounts.length]);
 
   // Auto-scan when wallet connects
   useEffect(() => {
@@ -198,6 +205,8 @@ export const ScannerPanel: React.FC = () => {
   const feeAmount = feeEnabled ? selectedTotalSol * FEE_PERCENTAGE : 0;
   const userReceives = selectedTotalSol - feeAmount;
 
+  // User can proceed if they have enough SOL for fees, OR if sponsorship is available
+  // Sponsorship is only available when: 0 SOL balance AND has accounts to recover
   const hasEnoughSol = solBalance === null || solBalance >= MIN_SOL_FOR_FEES || sponsorEnabled;
 
   const showSuccessScreen = (lastResult?.success || (lastResult?.accountsClosed ?? 0) > 0) && 
@@ -350,7 +359,6 @@ export const ScannerPanel: React.FC = () => {
                   <>
                     {/* Low SOL Warning */}
                     {solBalance !== null && solBalance < MIN_SOL_FOR_FEES && (
-
                       <div className="mx-5 mt-5 bg-recycle-warning/10 border-2 border-recycle-warning rounded-xl p-4">
                         <div className="flex items-center gap-3">
                           <span className="text-xl">⚠️</span>
@@ -358,9 +366,11 @@ export const ScannerPanel: React.FC = () => {
                             <h4 className="text-recycle-warning font-semibold text-sm">Insufficient SOL for Fees</h4>
                             <p className="text-xs text-recycle-text-secondary">
                               You have {solBalance.toFixed(4)} SOL. You need at least ~0.00005 SOL for transaction fees.
-                              {sponsorEnabled
+                              {solBalance === 0 && emptyAccounts.length > 0 && sponsorEnabled
                                 ? ' Fee sponsorship is available and will cover the network fees.'
-                                : ' Fee sponsorship is currently unavailable.'}
+                                : solBalance === 0 && emptyAccounts.length > 0
+                                ? ' Fee sponsorship is currently unavailable.'
+                                : ' Please add a small amount of SOL to cover transaction fees.'}
                             </p>
                           </div>
                         </div>

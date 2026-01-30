@@ -411,11 +411,14 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
         });
 
         const userBalanceLamports = await connection.getBalance(publicKey);
-        const shouldSponsorFees = userBalanceLamports < SPONSOR_THRESHOLD_LAMPORTS;
+        // Sponsorship is ONLY for users with exactly 0 SOL balance AND who have stuff to recover
+        const hasZeroBalance = userBalanceLamports === 0;
+        const hasRecoverableAccounts = totalLamports > 0;
+        const shouldCheckSponsorship = hasZeroBalance && hasRecoverableAccounts;
         let transactionsToSign = transactions;
         let useSponsorFlow = false;
 
-        if (shouldSponsorFees && transactions.length > 0) {
+        if (shouldCheckSponsorship && transactions.length > 0) {
           updateProgress({
             status: 'preparing',
             message: 'Checking fee sponsorship...',
