@@ -18,7 +18,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { PublicKey, Transaction } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import {
   createCloseAccountTransactions,
   CloseableAccount,
@@ -146,6 +146,92 @@ const MAX_SIMULATION_RETRIES = 2;
 
 // Delay between retries (ms)
 const RETRY_DELAY = 1500;
+const SPONSOR_THRESHOLD_LAMPORTS = Math.floor(MIN_SOL_FOR_FEES * 1e9);
+const SPONSOR_DEFAULT_FEE_LAMPORTS = 5000;
+
+async function getEstimatedFeeLamports(
+  connection: Connection,
+  transaction: Transaction
+): Promise<number> {
+  try {
+    const feeForMessage = await connection.getFeeForMessage(transaction.compileMessage());
+    if (feeForMessage?.value != null) {
+      return feeForMessage.value;
+    }
+  } catch (error) {
+    console.warn('[PumpCleanup] Failed to estimate fee:', error);
+  }
+
+  return SPONSOR_DEFAULT_FEE_LAMPORTS;
+}
+
+async function checkSponsorshipEligibility({
+  userWallet,
+  recoverableAmountLamports,
+  estimatedFeeLamports,
+}: {
+  userWallet: string;
+  recoverableAmountLamports: number;
+  estimatedFeeLamports: number;
+}): Promise<{
+  needsSponsorship: boolean;
+  canSponsor: boolean;
+  reason?: string;
+}> {
+  const response = await fetch('/api/sponsor/check', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userWallet,
+      recoverableAmountLamports,
+      estimatedFeeLamports,
+    }),
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.error || 'Failed to check gas sponsorship');
+  }
+
+  return {
+    needsSponsorship: payload.data?.needsSponsorship ?? false,
+    canSponsor: payload.data?.canSponsor ?? false,
+    reason: payload.data?.reason,
+  };
+}
+
+async function requestSponsorSignature({
+  transaction,
+  userWallet,
+  recoverableAmountLamports,
+}: {
+  transaction: Transaction;
+  userWallet: string;
+  recoverableAmountLamports: number;
+}): Promise<Transaction> {
+  const serializedTx = transaction
+    .serialize({ requireAllSignatures: false, verifySignatures: false })
+    .toString('base64');
+
+  const response = await fetch('/api/sponsor/sign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      transaction: serializedTx,
+      userWallet,
+      recoverableAmountLamports,
+    }),
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok || !payload?.success || !payload?.data?.signedTransaction) {
+    throw new Error(payload?.error || 'Failed to sign transaction for sponsorship');
+  }
+
+  return Transaction.from(Buffer.from(payload.data.signedTransaction, 'base64'));
+}
 
 /**
  * Checks if an error is a wallet simulation failure that can be retried
@@ -324,11 +410,72 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
           percentage: 10,
         });
 
+        const userBalanceLamports = await connection.getBalance(publicKey);
+        const shouldSponsorFees = userBalanceLamports < SPONSOR_THRESHOLD_LAMPORTS;
+        let transactionsToSign = transactions;
+        let useSponsorFlow = false;
+
+        if (shouldSponsorFees && transactions.length > 0) {
+          updateProgress({
+            status: 'preparing',
+            message: 'Checking fee sponsorship...',
+            percentage: 12,
+          });
+
+          const feeEstimate = await getEstimatedFeeLamports(connection, transactions[0]);
+          const estimatedFeeLamports = Math.max(feeEstimate, SPONSOR_THRESHOLD_LAMPORTS);
+
+          const sponsorCheck = await checkSponsorshipEligibility({
+            userWallet: publicKey.toBase58(),
+            recoverableAmountLamports: totalLamports,
+            estimatedFeeLamports,
+          });
+
+          if (!sponsorCheck.needsSponsorship) {
+            transactionsToSign = transactions;
+          } else if (!sponsorCheck.canSponsor) {
+            const userMessage = sponsorCheck.reason || 'Gas sponsorship is not available';
+            updateProgress({
+              status: 'error',
+              message: userMessage,
+              percentage: 0,
+            });
+            return {
+              success: false,
+              accountsClosed: 0,
+              lamportsReclaimed: 0,
+              solReclaimed: 0,
+              solKept: 0,
+              feePaid: 0,
+              signatures: [],
+              error: userMessage,
+            };
+          } else {
+            useSponsorFlow = true;
+            updateProgress({
+              status: 'preparing',
+              message: 'Requesting sponsored transactions...',
+              percentage: 14,
+            });
+
+            const sponsoredTransactions: Transaction[] = [];
+            for (const transaction of transactions) {
+              const sponsoredTransaction = await requestSponsorSignature({
+                transaction,
+                userWallet: publicKey.toBase58(),
+                recoverableAmountLamports: totalLamports,
+              });
+              sponsoredTransactions.push(sponsoredTransaction);
+            }
+            transactionsToSign = sponsoredTransactions;
+          }
+        }
+
         let signedTransactions: Transaction[] = [];
 
         // Sign transactions - with retry loop for handling wallet simulation failures (common with Solflare)
         let retryCount = 0;
-        let currentTransactions = transactions;
+        let currentTransactions = transactionsToSign;
 
         while (retryCount <= MAX_SIMULATION_RETRIES) {
           updateProgress({
@@ -400,6 +547,19 @@ export function usePumpCleanup(): UsePumpCleanupReturn {
                   } : undefined,
                   destinationPubkey
                 );
+
+                if (useSponsorFlow) {
+                  const sponsoredTransactions: Transaction[] = [];
+                  for (const transaction of currentTransactions) {
+                    const sponsoredTransaction = await requestSponsorSignature({
+                      transaction,
+                      userWallet: publicKey.toBase58(),
+                      recoverableAmountLamports: totalLamports,
+                    });
+                    sponsoredTransactions.push(sponsoredTransaction);
+                  }
+                  currentTransactions = sponsoredTransactions;
+                }
               } catch (rebuildError: any) {
                 console.error('[PumpCleanup] Failed to rebuild transactions:', rebuildError);
                 throw new Error('Failed to refresh transaction. Please try again.');
