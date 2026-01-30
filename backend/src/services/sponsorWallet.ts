@@ -18,7 +18,7 @@ const SPONSOR_PRIVATE_KEY = process.env.SPONSOR_PRIVATE_KEY;
 const RPC_ENDPOINT = process.env.RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com';
 
 // Spending limits
-const MAX_SPONSOR_PER_TX_LAMPORTS = 10000; // ~0.00001 SOL max per transaction (just gas)
+const MAX_SPONSOR_PER_TX_LAMPORTS = 100000; // ~0.0001 SOL max per transaction (covers typical fees + priority)
 const MAX_DAILY_SPONSOR_LAMPORTS = 100000000; // 0.1 SOL max per day
 const MIN_RECOVERABLE_SOL = 0; // Sponsor for any recoverable amount
 

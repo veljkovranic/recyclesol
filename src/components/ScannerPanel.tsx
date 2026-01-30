@@ -357,8 +357,8 @@ export const ScannerPanel: React.FC = () => {
               <div className="bg-cleanup-card border border-cleanup-border rounded-2xl overflow-hidden">
                 {emptyAccounts.length > 0 ? (
                   <>
-                    {/* Low SOL Warning */}
-                    {solBalance !== null && solBalance < MIN_SOL_FOR_FEES && (
+                    {/* Low SOL Warning - only show if NOT sponsored */}
+                    {solBalance !== null && solBalance < MIN_SOL_FOR_FEES && !sponsorEnabled && (
                       <div className="mx-5 mt-5 bg-recycle-warning/10 border-2 border-recycle-warning rounded-xl p-4">
                         <div className="flex items-center gap-3">
                           <span className="text-xl">⚠️</span>
@@ -366,11 +366,7 @@ export const ScannerPanel: React.FC = () => {
                             <h4 className="text-recycle-warning font-semibold text-sm">Insufficient SOL for Fees</h4>
                             <p className="text-xs text-recycle-text-secondary">
                               You have {solBalance.toFixed(4)} SOL. You need at least ~0.00005 SOL for transaction fees.
-                              {solBalance === 0 && emptyAccounts.length > 0 && sponsorEnabled
-                                ? ' Fee sponsorship is available and will cover the network fees.'
-                                : solBalance === 0 && emptyAccounts.length > 0
-                                ? ' Fee sponsorship is currently unavailable.'
-                                : ' Please add a small amount of SOL to cover transaction fees.'}
+                              {' '}Please add a small amount of SOL to cover transaction fees.
                             </p>
                           </div>
                         </div>
