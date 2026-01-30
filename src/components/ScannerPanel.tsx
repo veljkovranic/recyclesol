@@ -9,7 +9,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { shortenAddress } from '@/lib/solana';
 import { useWalletRentScanner, usePumpCleanup, useReferral } from '@/hooks';
-import { FEE_PERCENTAGE } from '@/lib/constants';
+import { FEE_PERCENTAGE, API_BASE_URL } from '@/lib/constants';
 import AccountsList from './AccountsList';
 import ReclaimButton from './ReclaimButton';
 import ProgressIndicator from './ProgressIndicator';
@@ -109,7 +109,7 @@ export const ScannerPanel: React.FC = () => {
       }
       
       try {
-        const response = await fetch('/api/sponsor/status');
+        const response = await fetch(`${API_BASE_URL}/api/sponsor/status`);
         const payload = await response.json();
         setSponsorEnabled(Boolean(payload?.success && payload?.data?.enabled));
       } catch (error) {

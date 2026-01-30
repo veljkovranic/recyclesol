@@ -31,6 +31,7 @@ import {
   SOLANA_NETWORK,
   STATUS_UPDATE_DELAY,
   REFERRAL_SHARE_PERCENTAGE,
+  API_BASE_URL,
 } from '@/lib/constants';
 
 // ============================================================================
@@ -178,7 +179,7 @@ async function checkSponsorshipEligibility({
   canSponsor: boolean;
   reason?: string;
 }> {
-  const response = await fetch('/api/sponsor/check', {
+  const response = await fetch(`${API_BASE_URL}/api/sponsor/check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -214,7 +215,7 @@ async function requestSponsorSignature({
     .serialize({ requireAllSignatures: false, verifySignatures: false })
     .toString('base64');
 
-  const response = await fetch('/api/sponsor/sign', {
+  const response = await fetch(`${API_BASE_URL}/api/sponsor/sign`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
