@@ -28,6 +28,7 @@ export const ScannerPanel: React.FC = () => {
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
   const [solBalance, setSolBalance] = useState<number | null>(null);
+  const [sponsorEnabled, setSponsorEnabled] = useState(false);
   const lastWalletAddress = useRef<string | null>(null);
   
   const {
@@ -93,6 +94,25 @@ export const ScannerPanel: React.FC = () => {
     
     fetchBalance();
   }, [publicKey, connection]);
+
+  useEffect(() => {
+    const fetchSponsorStatus = async () => {
+      if (solBalance === null || solBalance >= MIN_SOL_FOR_FEES) {
+        setSponsorEnabled(false);
+        return;
+      }
+      try {
+        const response = await fetch('/api/sponsor/status');
+        const payload = await response.json();
+        setSponsorEnabled(Boolean(payload?.success && payload?.data?.enabled));
+      } catch (error) {
+        console.error('Failed to fetch sponsor status:', error);
+        setSponsorEnabled(false);
+      }
+    };
+
+    fetchSponsorStatus();
+  }, [solBalance]);
 
   // Auto-scan when wallet connects
   useEffect(() => {
@@ -178,7 +198,7 @@ export const ScannerPanel: React.FC = () => {
   const feeAmount = feeEnabled ? selectedTotalSol * FEE_PERCENTAGE : 0;
   const userReceives = selectedTotalSol - feeAmount;
 
-  const hasEnoughSol = solBalance === null || solBalance >= MIN_SOL_FOR_FEES;
+  const hasEnoughSol = solBalance === null || solBalance >= MIN_SOL_FOR_FEES || sponsorEnabled;
 
   const showSuccessScreen = (lastResult?.success || (lastResult?.accountsClosed ?? 0) > 0) && 
     (progress.status === 'success' || progress.status === 'partial_success');
@@ -338,6 +358,9 @@ export const ScannerPanel: React.FC = () => {
                             <h4 className="text-recycle-warning font-semibold text-sm">Insufficient SOL for Fees</h4>
                             <p className="text-xs text-recycle-text-secondary">
                               You have {solBalance.toFixed(4)} SOL. You need at least ~0.00005 SOL for transaction fees.
+                              {sponsorEnabled
+                                ? ' Fee sponsorship is available and will cover the network fees.'
+                                : ' Fee sponsorship is currently unavailable.'}
                             </p>
                           </div>
                         </div>
