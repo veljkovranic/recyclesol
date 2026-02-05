@@ -183,7 +183,7 @@ async function fetchRecentCleanups(): Promise<PayoutEntry[]> {
 
         const sender = accountAddresses[0];
         const feeReceived = balanceDiff / 1e9;
-        const userReceived = feeReceived * 9; // 10% fee means user got 9x what we received
+        const userReceived = feeReceived * 99; // 1% fee means user got 99x what we received
         const rentPerAccount = 0.00204;
         const estimatedAccounts = Math.max(1, Math.round(userReceived / 0.9 / rentPerAccount));
 

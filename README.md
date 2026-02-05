@@ -12,7 +12,7 @@ Every token transaction on Solana creates token accounts that lock ~0.002 SOL as
 - 💰 **SOL Recovery** - Close empty accounts and get your rent back
 - 🔒 **Secure** - Only closes accounts with zero balance
 - ⚡ **Instant** - Transactions processed immediately
-- 📊 **Transparent** - 10% service fee, no upfront costs
+- 📊 **Transparent** - 1% service fee, no upfront costs
 
 ## Getting Started
 

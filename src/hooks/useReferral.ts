@@ -184,7 +184,7 @@ export function useReferral(): UseReferralReturn {
 
   // Calculate referral earnings percentages
   const referralSharePercent = REFERRAL_SHARE_PERCENTAGE * 100; // e.g., 50
-  const referrerFeePercent = FEE_PERCENTAGE * REFERRAL_SHARE_PERCENTAGE * 100; // e.g., 5% (10% fee * 50%)
+  const referrerFeePercent = FEE_PERCENTAGE * REFERRAL_SHARE_PERCENTAGE * 100; // e.g., 0.5% (1% fee * 50%)
 
   /**
    * Resolve a referral code (short code or wallet) to a wallet address via API
