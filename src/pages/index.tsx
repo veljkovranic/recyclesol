@@ -105,7 +105,7 @@ const StatsSection: React.FC = () => {
       value: '20+', 
       label: 'Users Served',
     },
-    { value: '10%', label: 'Service Fee' },
+    { value: '1%', label: 'Service Fee' },
   ];
 
   return (
