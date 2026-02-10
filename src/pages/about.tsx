@@ -160,7 +160,7 @@ export default function AboutPage() {
                   <div>
                     <h3 className="text-white font-semibold mb-1">Transparent Fees</h3>
                     <p className="text-cleanup-text-secondary text-sm">
-                      1% of recovered SOL—that&apos;s it. No hidden charges, no upfront costs. You only pay when you get your SOL back.
+                      20% of recovered SOL—that&apos;s it. No hidden charges, no upfront costs. You only pay when you get your SOL back.
                     </p>
                   </div>
                 </div>
