@@ -45,7 +45,7 @@ const faqs: FAQItem[] = [
           </div>
         </div>
         <p className="text-sm text-cleanup-text-muted pt-2">
-          We take a small 1% fee from recovered amounts to keep our servers running.
+          We take a small 20% fee from recovered amounts to keep our servers running.
         </p>
       </div>
     ),
@@ -98,7 +98,7 @@ const faqs: FAQItem[] = [
       <div className="space-y-4">
         <div className="flex items-center gap-6">
           <div className="text-center">
-            <div className="text-4xl font-bold font-display gradient-text">1%</div>
+            <div className="text-4xl font-bold font-display gradient-text">20%</div>
             <div className="text-xs text-cleanup-text-muted mt-1">Service Fee</div>
           </div>
           <div className="flex-1 space-y-2">

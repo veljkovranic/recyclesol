@@ -36,12 +36,12 @@ export const RPC_ENDPOINT =
 
 /**
  * Fee percentage taken from reclaimed SOL.
- * Default: 0.01 (1%)
+ * Default: 0.20 (20%)
  * 
  * Users keep (1 - FEE_PERCENTAGE) of their reclaimed rent.
  */
 export const FEE_PERCENTAGE = parseFloat(
-  process.env.NEXT_PUBLIC_FEE_PERCENTAGE || '0.01'
+  process.env.NEXT_PUBLIC_FEE_PERCENTAGE || '0.20'
 );
 
 /**
@@ -65,7 +65,7 @@ export const FEE_ENABLED = FEE_RECIPIENT !== '' && FEE_RECIPIENT !== 'YourFeeWal
  * Percentage of fees shared with referrers.
  * Default: 0.50 (50% of the fee goes to the referrer)
  * 
- * Example: If FEE_PERCENTAGE is 1% and REFERRAL_SHARE is 50%,
+ * Example: If FEE_PERCENTAGE is 20% and REFERRAL_SHARE is 50%,
  * referrer gets 0.5% of total reclaimed, platform gets 0.5%.
  */
 export const REFERRAL_SHARE_PERCENTAGE = parseFloat(
@@ -129,4 +129,3 @@ export const STATUS_UPDATE_DELAY = 500;
  * Shows first N and last N characters of addresses.
  */
 export const ADDRESS_DISPLAY_LENGTH = 4;
-
